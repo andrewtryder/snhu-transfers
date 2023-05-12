@@ -4,15 +4,6 @@
     <title>Course List</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <script>
-        // Add this script to collapse the course details when the page loads
-        window.addEventListener('DOMContentLoaded', (event) => {
-            const courseDetails = document.getElementsByClassName('course-details');
-            for (let i = 0; i < courseDetails.length; i++) {
-                courseDetails[i].style.display = 'none';
-            }
-        });
-    </script>
 </head>
 <body>
     <h1>Course List</h1>
@@ -27,6 +18,7 @@
                             {% for course in grouped_courses %}
                                 <li>
                                     <a href="https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/{{ course['pid']}}">
+                                        <span class="course-number"> {{ course_number }}</span>
                                         <span class="group-filter">{{ course['groupFilter2Name'] }}</span> - 
                                         <span class="course-title">Title: {{ course['title'] }}</span> - 
                                         <span class="eligibility">Eligibility Timeframe: {{ course['eligibilityTimeframe'] }}</span>
@@ -41,4 +33,3 @@
     </div>
 </body>
 </html>
-

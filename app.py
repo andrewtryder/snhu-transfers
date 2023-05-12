@@ -22,6 +22,8 @@ def index():
     for course in courses:
         prefix = re.search(r'^[A-Za-z]+', course['courseName']).group()
         course_name = course['courseName']
+        if course_name.endswith('ELE'):
+            prefix = prefix.rstrip('ELE')
         if prefix in grouped_courses:
             if course_name in grouped_courses[prefix]:
                 grouped_courses[prefix][course_name].append(course)
