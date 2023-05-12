@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Course List</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Add this script to collapse the course details when the page loads
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const courseDetails = document.getElementsByClassName('course-details');
+            for (let i = 0; i < courseDetails.length; i++) {
+                courseDetails[i].style.display = 'none';
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Course List</h1>
+    <div class="course-list">
+        {% for prefix, prefix_courses in grouped_courses.items() %}
+            <h2 class="course-header" onclick="toggleDetails('{{ prefix }}')">{{ prefix }}</h2>
+            <ul class="course-details" id="{{ prefix }}">
+                {% for course_number, grouped_courses in prefix_courses.items() %}
+                    <li>
+                        <h3 class="course-header" onclick="toggleDetails('{{ prefix }}-{{ course_number }}')">{{ course_number }}</h3>
+                        <ul class="course-details" id="{{ prefix }}-{{ course_number }}">
+                            {% for course in grouped_courses %}
+                                <li>
+                                    <a href="https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/{{ course['pid']}}">
+                                        <span class="group-filter">{{ course['groupFilter2Name'] }}</span> - 
+                                        <span class="course-title">Title: {{ course['title'] }}</span> - 
+                                        <span class="eligibility">Eligibility Timeframe: {{ course['eligibilityTimeframe'] }}</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endfor %}
+    </div>
+</body>
+</html>
+
