@@ -8,32 +8,41 @@
 <body>
     <h1>SNHU Transfer List - Sorted by subject and course</h1>
     <table>
-        {% for prefix, prefix_courses in grouped_courses.items() %}
-            <thead>
+        <!-- Table header -->
+        <thead>
+            <tr>
                 <th align="left">Course Number</th>
                 <th align="left">Organization</th>
-                <th align="left">Class Title</t>
-                <th align="left">Elgibility Timeframe</th>
-            </thead>
-            <tbody>
-            {% for course_number, grouped_courses in prefix_courses.items() %}
-                <tr>
-                    <td colspan="4" onclick="toggleDetails('{{ prefix }}-{{ course_number }}')"><strong>{{ course_number }}</strong></td>
-                </tr>
-                {% for course in grouped_courses %}
-                    <tr>
-                        <td><a href="https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/{{ course['pid']}}">{{ course_number }}</a></td>
-                        <td>{{ course['groupFilter2Name'] }}</td>
-                        <td>{{ course['title'] }}</td>
-                        <td>{{ course['eligibilityTimeframe'] }}</td>
+                <th align="left">Class Title</th>
+                <th align="left">Eligibility Timeframe</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Loop through each subject prefix and its courses -->
+            {% for subject_prefix, prefix_courses_dict in grouped_courses.items() %}
+                {% for course_number, courses_list in prefix_courses_dict.items() %}
+                    <!-- Course row - click to expand details -->
+                    <tr id="{{ subject_prefix }}-{{ course_number }}">
+                        <td colspan="4"><strong>{{ course_number }}</strong></td>
                     </tr>
+                    <!-- Course details rows - hidden by default -->
+                    {% for course in courses_list %}
+                        <tr>
+                            <td>
+                                <a href="https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/{{ course['pid']}}">
+                                    {{ course_number }}
+                                </a>
+                            </td>
+                            <td>{{ course['groupFilter2Name'] }}</td>
+                            <td>{{ course['title'] }}</td>
+                            <td>{{ course['eligibilityTimeframe'] }}</td>
+                        </tr>
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
-            <tr></tr>
-            </tbody>
-        {% endfor %} 
+            {% endfor %} 
+        </tbody>
     </table>
+    <!-- Disclaimer -->
+    <div id="disclaimer"><b>Disclaimer:</b>This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor!</div>
 </body>
-<br><br>
-<div id="disclaimer"><b>Disclaimer:</b>This in an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor!</div>
 </html>
