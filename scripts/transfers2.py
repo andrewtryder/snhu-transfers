@@ -5,15 +5,23 @@ from time import sleep
 import re
 
 # Connect to the SQLite database
-conn = sqlite3.connect('transfers.db')
+conn = sqlite3.connect('../db/transfers.db')
 cursor = conn.cursor()
 
-# Create the table if it doesn't exist
+# Create the courses_data table if it doesn't exist
 cursor.execute('''CREATE TABLE IF NOT EXISTS courses_data
                   (code TEXT, dateStart TEXT, pid TEXT UNIQUE, id TEXT, title TEXT, catalogActivationDate TEXT, score REAL,
                   rulesAchievementCriteria TEXT, eligibilityTimeframe TEXT, groupFilter1Name TEXT, groupFilter1Id TEXT, groupFilter1CustomFields TEXT,
-                  groupFilter2Name TEXT, groupFilter2Id TEXT, groupFilter2CustomFields TEXT, academicLevel TEXT, coursePID TEXT, courseName TEXT)''')
+                  groupFilter2Name TEXT, groupFilter2Id TEXT, groupFilter2CustomFields TEXT, academicLevel TEXT)''')
 
+print("Created courses_data")
+# Create the transfer_classes table if it doesn't exist
+cursor.execute('''CREATE TABLE IF NOT EXISTS transfer_classes
+                  (pid TEXT, coursePID TEXT, courseName TEXT,
+                  FOREIGN KEY (pid) REFERENCES courses_data (pid))''')
+
+print("Created transfer_classess")
+conn.commit()
 
 # Query the database for unique pid values
 cursor.execute('SELECT DISTINCT pid FROM courses')
@@ -24,6 +32,11 @@ url_pattern = 'https://snhu.kuali.co/api/v1/catalog/experience/62d0386e064ce7001
 
 # Iterate over each pid value
 for pid in existing_pids:
+    cursor.execute('SELECT * FROM courses_data WHERE pid = ?', (pid,))
+    if cursor.fetchone():
+        print(f"Skipping course {pid} (already exists in database)")
+        continue
+
     # Check if the entry already exists in the database
     if pid is None:
         continue
@@ -56,26 +69,41 @@ for pid in existing_pids:
     group_filter2_name = group_filter2.get('name')
     group_filter2_id = group_filter2.get('id')
     group_filter2_custom_fields = json.dumps(group_filter2.get('customFields', {}))
-    # Extract course PID and name from rulesAchievementCriteria using regex
-    course_pid_match = re.search(r'<a href="#/courses/view/([A-Za-z0-9-]+)"', rules_achievement_criteria)
-    course_pid = course_pid_match.group(1) if course_pid_match else None
-    course_name_match = re.search(r'<a href="#/courses/view/.*>(.*?)<\/a>', rules_achievement_criteria)
-    course_name = course_name_match.group(1) if course_name_match else None
 
-    # Insert the parsed data into the database, ignoring duplicates
+    # Extract course PID and name from rulesAchievementCriteria using regex
+    course_pid_matches = re.findall(r'<a href="#/courses/view/([A-Za-z0-9-]+)"', rules_achievement_criteria)
+    course_pids = course_pid_matches
+    print(course_pids)
+
+    course_name_matches = re.findall(r'(?<=/courses/view/).*?>(.*?)<\/a>', rules_achievement_criteria)
+    course_names = course_name_matches
+    print(course_names)
+
+    # Insert the parsed data into the courses_data table, ignoring duplicates
     cursor.execute('''INSERT OR IGNORE INTO courses_data
-                      (code, dateStart, pid, id, title, catalogActivationDate, score,
-                      rulesAchievementCriteria, eligibilityTimeframe,
-                      groupFilter1Name, groupFilter1Id, groupFilter1CustomFields,
-                      groupFilter2Name, groupFilter2Id, groupFilter2CustomFields,
-                      academicLevel, coursePID, courseName)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (code, dateStart, pid, id, title, catalogActivationDate, score,
+                    rulesAchievementCriteria, eligibilityTimeframe,
+                    groupFilter1Name, groupFilter1Id, groupFilter1CustomFields,
+                    groupFilter2Name, groupFilter2Id, groupFilter2CustomFields,
+                    academicLevel)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                    (code, date_start, pid, id, title, catalog_activation_date, score,
                     rules_achievement_criteria, eligibility_timeframe,
                     group_filter1_name, group_filter1_id, group_filter1_custom_fields,
                     group_filter2_name, group_filter2_id, group_filter2_custom_fields,
-                    academic_level, course_pid, course_name))
+                    academic_level))
     conn.commit()
+
+    # Insert the course names and pids into the transfer_classes table, relating to the courses_data table
+    for course_pid, course_name in zip(course_pids, course_names):
+        print("Injecting :: {0} {1}".format(course_pid, course_name))
+        cursor.execute('''INSERT INTO transfer_classes
+                        (pid, coursePID, courseName)
+                        VALUES (?, ?, ?)''',
+                       (pid, course_pid, course_name))
+    conn.commit()
+
     sleep(10)
 
 conn.close()
+   
