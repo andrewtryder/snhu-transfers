@@ -27,6 +27,7 @@ const coursesData = coursesDataRaw as unknown as CoursesData;
 
 export default function Home() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => ({
@@ -41,6 +42,21 @@ export default function Home() {
         SNHU Transfer List - Sorted by subject and course - Last update: 20230713
       </h1>
 
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#0077b6] focus:border-[#0077b6] sm:text-sm"
+          placeholder="Search courses..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="overflow-x-auto shadow-sm rounded-lg border border-gray-200">
         <table className="min-w-full border-collapse bg-white">
           <thead className="bg-[#0077b6] text-white">
@@ -54,6 +70,16 @@ export default function Home() {
           <tbody>
             {Object.entries(coursesData).map(([subjectPrefix, prefixCoursesDict]) => (
               Object.entries(prefixCoursesDict).map(([courseNumber, coursesList]) => {
+                const searchLower = searchTerm.toLowerCase();
+                const matchesSearch =
+                  courseNumber.toLowerCase().includes(searchLower) ||
+                  coursesList.some((course) =>
+                    (course.title && course.title.toLowerCase().includes(searchLower)) ||
+                    (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
+                  );
+
+                if (!matchesSearch) return null;
+
                 const rowId = `${subjectPrefix}-${courseNumber}`;
                 const isExpanded = expandedRows[rowId];
 

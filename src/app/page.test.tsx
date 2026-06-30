@@ -108,6 +108,30 @@ describe('Home Page', () => {
     })
   })
 
+  it('filters courses based on search term', async () => {
+    render(<Home />)
+
+    // Initially, both IT100 and ENG101 should be visible
+    expect(screen.getByText('IT100')).toBeInTheDocument()
+    expect(screen.getByText('ENG101')).toBeInTheDocument()
+
+    const searchInput = screen.getByPlaceholderText('Search courses...')
+
+    // Type a search term that matches IT100
+    fireEvent.change(searchInput, { target: { value: 'IT' } })
+
+    // IT100 should still be visible, ENG101 should not
+    expect(screen.getByText('IT100')).toBeInTheDocument()
+    expect(screen.queryByText('ENG101')).not.toBeInTheDocument()
+
+    // Type a search term that matches the organization of ENG101
+    fireEvent.change(searchInput, { target: { value: 'Another Org' } })
+
+    // ENG101 should be visible, IT100 should not
+    expect(screen.getByText('ENG101')).toBeInTheDocument()
+    expect(screen.queryByText('IT100')).not.toBeInTheDocument()
+  })
+
   it('renders the disclaimer', () => {
     render(<Home />)
     expect(screen.getByText(/This is an unofficial compilation/i)).toBeInTheDocument()
