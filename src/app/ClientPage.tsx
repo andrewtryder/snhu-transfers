@@ -46,7 +46,7 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
     }));
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>, id: string) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement | HTMLButtonElement>, id: string) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggleRow(id);
@@ -91,7 +91,7 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
   }, [allCourses, searchTerm, activeView]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+    <main className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
         {/* Header */}
@@ -101,7 +101,7 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
         </header>
 
         {/* Controls: Search and Tabs */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <section className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4" aria-label="Controls">
 
           {/* Search */}
           <div className="relative w-full md:w-96">
@@ -119,8 +119,10 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
           </div>
 
           {/* View Tabs */}
-          <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
+          <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto" role="tablist" aria-label="Course view options">
             <button
+              role="tab"
+              aria-selected={activeView === "subject"}
               onClick={() => setActiveView("subject")}
               className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "subject" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
@@ -128,6 +130,8 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
               By Subject
             </button>
             <button
+              role="tab"
+              aria-selected={activeView === "organization"}
               onClick={() => setActiveView("organization")}
               className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "organization" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
@@ -135,6 +139,8 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
               By Organization
             </button>
             <button
+              role="tab"
+              aria-selected={activeView === "level"}
               onClick={() => setActiveView("level")}
               className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "level" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
             >
@@ -142,7 +148,7 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
               By Level
             </button>
           </div>
-        </div>
+        </section>
 
         {/* Data Table */}
         <div className="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
@@ -170,15 +176,18 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
                       <React.Fragment key={rowId}>
                         {/* Group Header Row */}
                         <tr
-                          className="cursor-pointer hover:bg-slate-50 transition-colors group"
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={isExpanded}
-                          onKeyDown={(e) => handleKeyDown(e, rowId)}
-                          onClick={() => toggleRow(rowId)}
+                          className="hover:bg-slate-50 transition-colors group"
                         >
-                          <td colSpan={2} className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center text-slate-900 font-semibold">
+                          <td colSpan={2} className="p-0">
+                            <button
+                              type="button"
+                              className="w-full px-6 py-4 flex items-center text-slate-900 font-semibold cursor-pointer focus:outline-none focus:bg-slate-50"
+                              aria-expanded={isExpanded}
+                              aria-controls={`group-details-${rowId.replace(/\s+/g, '-')}`}
+                              onKeyDown={(e) => handleKeyDown(e, rowId)}
+                              onClick={() => toggleRow(rowId)}
+                            >
+                              <span className="sr-only">Toggle details for {groupName}</span>
                               <span className="mr-3 text-slate-400 group-hover:text-[#0077b6] transition-colors">
                                 {isExpanded ? <ChevronDownIcon className="w-5 h-5" /> : <ChevronRightIcon className="w-5 h-5" />}
                               </span>
@@ -186,13 +195,13 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
                               <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
                                 {coursesList.length} {coursesList.length === 1 ? 'item' : 'items'}
                               </span>
-                            </div>
+                            </button>
                           </td>
                         </tr>
 
                         {/* Expanded Details Rows */}
                         {isExpanded && (
-                          <tr className="bg-slate-50/50">
+                          <tr className="bg-slate-50/50" id={`group-details-${rowId.replace(/\s+/g, '-')}`}>
                             <td colSpan={2} className="p-0 border-b-0">
                                <div className="px-6 py-4 md:px-14">
                                 <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
@@ -284,6 +293,6 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
