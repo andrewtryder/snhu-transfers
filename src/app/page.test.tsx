@@ -35,7 +35,7 @@ describe('Page tests', () => {
         render(ServerComponent);
 
         // Check if heading is present
-        expect(screen.getByText('SNHU Transfer List - Sorted by subject and course - Database Integrated')).toBeInTheDocument();
+        expect(screen.getByText('SNHU Transfer List')).toBeInTheDocument();
 
         // Wait for course to appear (since it's loaded from our mock)
         await waitFor(() => {
@@ -50,7 +50,7 @@ describe('Page tests', () => {
         expect(screen.getByText('AP Exams')).toBeInTheDocument();
 
         // Search for non-existent course
-        const searchInput = screen.getByPlaceholderText('Search courses...');
+        const searchInput = screen.getByPlaceholderText('Search by course, title, or organization...');
         fireEvent.change(searchInput, { target: { value: 'XYZ999' } });
 
         // GEO200 should not be visible anymore
