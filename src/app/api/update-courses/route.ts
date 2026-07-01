@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
-export const maxDuration = 300; // 5 minutes (requires Pro plan usually, but we can set it to the max allowed)
+export const maxDuration = 60; // 5 minutes (requires Pro plan usually, but we can set it to the max allowed)
 
 const LIST_EXPERIENCES_URL = 'https://snhu.kuali.co/api/v1/catalog/experiences/62d0386e064ce7001cec61d1?q=';
 const EXPERIENCE_DETAIL_URL_PREFIX = 'https://snhu.kuali.co/api/v1/catalog/experience/62d0386e064ce7001cec61d1/';
