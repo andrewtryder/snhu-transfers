@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { db } from '../../../db';
-import { courses } from '../../../db/schema';
+import { transferCourses } from '../../../db/schema';
 
 export const maxDuration = 60; // 1 minute limit on hobby
 
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
         console.log(`Found ${experiencesList.length} experiences to process.`);
 
-        const parsedCourses: typeof courses.$inferInsert[] = [];
+        const parsedCourses: typeof transferCourses.$inferInsert[] = [];
 
         const batchSize = 20;
         for (let i = 0; i < experiencesList.length; i += batchSize) {
@@ -86,16 +86,16 @@ export async function GET(request: Request) {
 
         console.log(`Extracted ${parsedCourses.length} mapped courses. Writing to database via Drizzle...`);
 
-        await db.transaction(async (tx) => {
-           await tx.delete(courses);
-           // Drizzle insert supports arrays for bulk insert
-           if (parsedCourses.length > 0) {
-              await tx.insert(courses).values(parsedCourses);
-           }
-        });
+        await db.delete(transferCourses);
+        if (parsedCourses.length > 0) {
+            await db.insert(transferCourses).values(parsedCourses);
+        }
 
-        // Trigger On-Demand Revalidation so the static page updates with the new data
-        revalidatePath('/');
+        try {
+            revalidatePath('/');
+        } catch {
+            // revalidatePath only works inside a Next.js request context
+        }
 
         return NextResponse.json({ success: true, count: parsedCourses.length });
     } catch (error) {

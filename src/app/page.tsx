@@ -1,6 +1,6 @@
 import ClientPage from './ClientPage';
 import { db } from '../db';
-import { courses } from '../db/schema';
+import { transferCourses } from '../db/schema';
 import { asc } from 'drizzle-orm';
 
 type Course = {
@@ -23,7 +23,7 @@ type CoursesData = {
 
 async function getCoursesData(): Promise<CoursesData> {
   try {
-    const allCourses = await db.select().from(courses).orderBy(asc(courses.courseNumber));
+    const allCourses = await db.select().from(transferCourses).orderBy(asc(transferCourses.courseNumber));
 
     const data: CoursesData = {};
 

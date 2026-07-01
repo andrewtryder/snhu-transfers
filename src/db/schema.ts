@@ -1,6 +1,6 @@
 import { pgTable, serial, varchar, text } from 'drizzle-orm/pg-core';
 
-export const courses = pgTable('courses', {
+export const transferCourses = pgTable('transfer_courses', {
   id: serial('id').primaryKey(),
   subjectPrefix: varchar('subjectprefix', { length: 255 }),
   courseNumber: varchar('coursenumber', { length: 255 }),

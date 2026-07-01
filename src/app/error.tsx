@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
+import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 
 export default function Error({
   error,
@@ -14,19 +16,34 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-md w-full text-center">
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">Something went wrong!</h2>
-        <p className="text-slate-600 mb-8">
-          We encountered an error while trying to load the transfer list. Please try again.
-        </p>
-        <button
-          onClick={() => reset()}
-          className="bg-[#0077b6] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#005d90] transition-colors"
+    <div className="flex min-h-screen flex-col bg-background">
+      <AppHeader />
+
+      <main
+        id="main-content"
+        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 items-center justify-center px-4 py-10 md:px-8 pb-28"
+      >
+        <div
+          role="alert"
+          className="w-full max-w-md rounded-lg border border-error-container bg-error-container p-8 text-center"
         >
-          Try again
-        </button>
-      </div>
+          <h2 className="mb-2 font-[family-name:var(--font-headline)] text-2xl font-semibold text-on-error-container">
+            Something went wrong
+          </h2>
+          <p className="mb-8 text-sm text-on-error-container">
+            We encountered an error while trying to load the transfer list. Please try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => reset()}
+            className="rounded-md bg-secondary-container px-6 py-2 text-sm font-semibold text-on-secondary-container transition-colors hover:bg-secondary"
+          >
+            Try again
+          </button>
+        </div>
+      </main>
+
+      <AppFooter />
     </div>
   );
 }

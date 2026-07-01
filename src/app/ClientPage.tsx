@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useMemo, KeyboardEvent } from "react";
-import { ChevronDownIcon, ChevronRightIcon, SearchIcon, BuildingIcon, BookOpenIcon, GraduationCapIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { AppHeader, type ViewType } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 
 type Course = {
   title: string | null;
@@ -21,14 +23,11 @@ type CoursesData = {
   [subjectPrefix: string]: CoursesByGroup;
 };
 
-type ViewType = "subject" | "organization" | "level";
-
 export default function ClientPage({ initialCoursesData }: { initialCoursesData: CoursesData }) {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [activeView, setActiveView] = useState<ViewType>("subject");
 
-  // Flatten the courses for easier re-grouping
   const allCourses = useMemo(() => {
     const courses: Course[] = [];
     for (const prefix of Object.values(initialCoursesData)) {
@@ -46,28 +45,26 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
     }));
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement | HTMLButtonElement>, id: string) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>, id: string) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggleRow(id);
     }
   };
 
-  // Group and filter based on active view
   const groupedAndFilteredCourses = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
 
-    // 1. Filter
-    const filtered = allCourses.filter(course =>
-      (course.courseName && course.courseName.toLowerCase().includes(searchLower)) ||
-      (course.title && course.title.toLowerCase().includes(searchLower)) ||
-      (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
+    const filtered = allCourses.filter(
+      (course) =>
+        (course.courseName && course.courseName.toLowerCase().includes(searchLower)) ||
+        (course.title && course.title.toLowerCase().includes(searchLower)) ||
+        (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
     );
 
-    // 2. Group
     const grouped: Record<string, Course[]> = {};
 
-    filtered.forEach(course => {
+    filtered.forEach((course) => {
       let key = "";
       if (activeView === "subject") {
         key = course.courseName || "Unknown Subject";
@@ -83,90 +80,54 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
       grouped[key].push(course);
     });
 
-    // Sort the keys
-    return Object.keys(grouped).sort().map(key => ({
-      groupName: key,
-      coursesList: grouped[key]
-    }));
+    return Object.keys(grouped)
+      .sort()
+      .map((key) => ({
+        groupName: key,
+        coursesList: grouped[key],
+      }));
   }, [allCourses, searchTerm, activeView]);
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="flex min-h-screen flex-col bg-background">
+      <AppHeader
+        showControls
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
 
-        {/* Header */}
-        <header className="mb-10 text-center sm:text-left">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">SNHU Transfer List</h1>
-          <p className="mt-2 text-slate-500 text-lg">Easily find transfer equivalencies for your academic journey.</p>
-        </header>
-
-        {/* Controls: Search and Tabs */}
-        <section className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4" aria-label="Controls">
-
-          {/* Search */}
-          <div className="relative w-full md:w-96">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              aria-label="Search courses"
-              className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0077b6] focus:border-[#0077b6] transition-all sm:text-sm"
-              placeholder="Search by course, title, or organization..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* View Tabs */}
-          <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto" role="tablist" aria-label="Course view options">
-            <button
-              role="tab"
-              aria-selected={activeView === "subject"}
-              onClick={() => setActiveView("subject")}
-              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "subject" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-            >
-              <BookOpenIcon className="w-4 h-4" />
-              By Subject
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeView === "organization"}
-              onClick={() => setActiveView("organization")}
-              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "organization" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-            >
-              <BuildingIcon className="w-4 h-4" />
-              By Organization
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeView === "level"}
-              onClick={() => setActiveView("level")}
-              className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${activeView === "level" ? "bg-white text-[#0077b6] shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-            >
-              <GraduationCapIcon className="w-4 h-4" />
-              By Level
-            </button>
-          </div>
-        </section>
-
-        {/* Data Table */}
-        <div className="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
+      <main
+        id="main-content"
+        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col px-4 py-6 md:px-8 md:py-8 pb-28"
+      >
+        <div className="overflow-hidden rounded-lg border border-surface-variant bg-surface-container-lowest shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-surface-variant">
+              <thead className="bg-surface-container-low">
                 <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Group</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Details</th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-on-surface-variant"
+                  >
+                    Group
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-on-surface-variant"
+                  >
+                    Details
+                  </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
+              <tbody className="divide-y divide-surface-variant bg-surface-container-lowest">
                 {groupedAndFilteredCourses.length === 0 ? (
-                   <tr>
-                     <td colSpan={2} className="px-6 py-12 text-center text-slate-500">
-                        No courses found matching your search.
-                     </td>
-                   </tr>
+                  <tr>
+                    <td colSpan={2} className="px-6 py-12 text-center text-on-surface-variant">
+                      No courses found matching your search.
+                    </td>
+                  </tr>
                 ) : (
                   groupedAndFilteredCourses.map(({ groupName, coursesList }) => {
                     const rowId = groupName;
@@ -174,56 +135,74 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
 
                     return (
                       <React.Fragment key={rowId}>
-                        {/* Group Header Row */}
                         <tr
-                          className="hover:bg-slate-50 transition-colors group"
+                          className="group cursor-pointer transition-colors hover:bg-surface-container-low"
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={isExpanded}
+                          onKeyDown={(e) => handleKeyDown(e, rowId)}
+                          onClick={() => toggleRow(rowId)}
                         >
-                          <td colSpan={2} className="p-0">
-                            <button
-                              type="button"
-                              className="w-full px-6 py-4 flex items-center text-slate-900 font-semibold cursor-pointer focus:outline-none focus:bg-slate-50"
-                              aria-expanded={isExpanded}
-                              aria-controls={`group-details-${rowId.replace(/\s+/g, '-')}`}
-                              onKeyDown={(e) => handleKeyDown(e, rowId)}
-                              onClick={() => toggleRow(rowId)}
-                            >
-                              <span className="sr-only">Toggle details for {groupName}</span>
-                              <span className="mr-3 text-slate-400 group-hover:text-[#0077b6] transition-colors">
-                                {isExpanded ? <ChevronDownIcon className="w-5 h-5" /> : <ChevronRightIcon className="w-5 h-5" />}
+                          <td colSpan={2} className="whitespace-nowrap px-6 py-4">
+                            <div className="flex items-center font-semibold text-on-surface">
+                              <span className="mr-3 text-outline transition-colors group-hover:text-primary">
+                                {isExpanded ? (
+                                  <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+                                ) : (
+                                  <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+                                )}
                               </span>
                               <span className="text-base">{groupName}</span>
-                              <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                {coursesList.length} {coursesList.length === 1 ? 'item' : 'items'}
+                              <span className="ml-3 inline-flex items-center rounded-full border border-surface-variant bg-surface-container-low px-2.5 py-0.5 text-xs font-medium text-on-surface-variant">
+                                {coursesList.length} {coursesList.length === 1 ? "item" : "items"}
                               </span>
-                            </button>
+                            </div>
                           </td>
                         </tr>
 
-                        {/* Expanded Details Rows */}
                         {isExpanded && (
-                          <tr className="bg-slate-50/50" id={`group-details-${rowId.replace(/\s+/g, '-')}`}>
-                            <td colSpan={2} className="p-0 border-b-0">
-                               <div className="px-6 py-4 md:px-14">
-                                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                                  <table className="min-w-full divide-y divide-slate-100">
-                                    <thead className="bg-slate-50">
+                          <tr className="bg-surface-container-low/60">
+                            <td colSpan={2} className="border-b-0 p-0">
+                              <div className="px-6 py-4 md:px-14">
+                                <div className="overflow-hidden rounded-lg border border-surface-variant bg-surface-container-lowest shadow-sm">
+                                  <table className="min-w-full divide-y divide-surface-variant">
+                                    <thead className="bg-surface-container-low">
                                       <tr>
-                                        {activeView !== "subject" && <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Course</th>}
-                                        {activeView !== "organization" && <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Organization</th>}
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Title</th>
-                                        {activeView !== "level" && <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 hidden sm:table-cell">Level</th>}
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 hidden md:table-cell">Timeframe</th>
+                                        {activeView !== "subject" && (
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">
+                                            Course
+                                          </th>
+                                        )}
+                                        {activeView !== "organization" && (
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">
+                                            Organization
+                                          </th>
+                                        )}
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">
+                                          Title
+                                        </th>
+                                        {activeView !== "level" && (
+                                          <th className="hidden px-4 py-3 text-left text-xs font-medium text-on-surface-variant sm:table-cell">
+                                            Level
+                                          </th>
+                                        )}
+                                        <th className="hidden px-4 py-3 text-left text-xs font-medium text-on-surface-variant md:table-cell">
+                                          Timeframe
+                                        </th>
                                       </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-surface-variant">
                                       {coursesList.map((course, idx) => (
-                                        <tr key={`${rowId}-${idx}`} className="hover:bg-slate-50 transition-colors">
+                                        <tr
+                                          key={`${rowId}-${idx}`}
+                                          className="transition-colors hover:bg-surface-container-low"
+                                        >
                                           {activeView !== "subject" && (
-                                            <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                                               {course.pid ? (
+                                            <td className="px-4 py-3 text-sm font-medium text-on-surface">
+                                              {course.pid ? (
                                                 <a
                                                   href={`https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/${course.pid}`}
-                                                  className="text-[#0077b6] hover:underline"
+                                                  className="text-secondary transition-colors hover:text-primary hover:underline"
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                 >
@@ -235,40 +214,44 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
                                             </td>
                                           )}
                                           {activeView !== "organization" && (
-                                            <td className="px-4 py-3 text-sm text-slate-600">{course.groupFilter2Name || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-on-surface-variant">
+                                              {course.groupFilter2Name || "-"}
+                                            </td>
                                           )}
-                                          <td className="px-4 py-3 text-sm text-slate-900">
+                                          <td className="px-4 py-3 text-sm text-on-surface">
                                             {activeView === "subject" ? (
                                               course.pid ? (
                                                 <a
                                                   href={`https://www.snhu.edu/admission/transferring-credits/work-life-experience#/experiences/${course.pid}`}
-                                                  className="text-[#0077b6] hover:underline font-medium"
+                                                  className="font-medium text-secondary transition-colors hover:text-primary hover:underline"
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                 >
-                                                  {course.title || '-'}
+                                                  {course.title || "-"}
                                                 </a>
                                               ) : (
-                                                <span className="font-medium">{course.title || '-'}</span>
+                                                <span className="font-medium">{course.title || "-"}</span>
                                               )
                                             ) : (
-                                              course.title || '-'
+                                              course.title || "-"
                                             )}
                                           </td>
                                           {activeView !== "level" && (
-                                            <td className="px-4 py-3 text-sm text-slate-600 hidden sm:table-cell">
-                                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                                                {course.academicLevel || '-'}
+                                            <td className="hidden px-4 py-3 text-sm text-on-surface-variant sm:table-cell">
+                                              <span className="inline-flex items-center rounded-full border border-surface-variant bg-surface-container-low px-2 py-0.5 text-xs font-medium text-on-surface">
+                                                {course.academicLevel || "-"}
                                               </span>
                                             </td>
                                           )}
-                                          <td className="px-4 py-3 text-sm text-slate-600 hidden md:table-cell">{course.eligibilityTimeframe || '-'}</td>
+                                          <td className="hidden px-4 py-3 text-sm text-on-surface-variant md:table-cell">
+                                            {course.eligibilityTimeframe || "-"}
+                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
                                 </div>
-                               </div>
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -280,19 +263,9 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
             </table>
           </div>
         </div>
+      </main>
 
-        {/* Footer Disclaimer */}
-        <div className="mt-8 p-4 bg-white rounded-xl shadow-sm border border-slate-200 text-sm text-slate-500 flex items-start gap-3">
-          <div className="mt-0.5 flex-shrink-0">
-             <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-             </svg>
-          </div>
-          <p>
-            <strong className="font-semibold text-slate-700">Disclaimer:</strong> This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor!
-          </p>
-        </div>
-      </div>
-    </main>
+      <AppFooter />
+    </div>
   );
 }

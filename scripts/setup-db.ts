@@ -11,10 +11,10 @@ async function setupDatabase() {
     await client.connect();
     console.log('Connected to PostgreSQL database');
 
-    await client.query('DROP TABLE IF EXISTS courses');
+    await client.query('DROP TABLE IF EXISTS transfer_courses');
 
     const createTableText = `
-      CREATE TABLE IF NOT EXISTS courses (
+      CREATE TABLE IF NOT EXISTS transfer_courses (
         id SERIAL PRIMARY KEY,
         "subjectprefix" VARCHAR(255),
         "coursenumber" VARCHAR(255),
@@ -28,7 +28,7 @@ async function setupDatabase() {
     `;
 
     await client.query(createTableText);
-    console.log('Courses table created.');
+    console.log('transfer_courses table created.');
 
   } catch (err) {
     console.error('Error creating table', err);

@@ -28,8 +28,8 @@ describe('Page tests', () => {
         const ServerComponent = await Page();
         render(ServerComponent);
 
-        // Check if heading is present
-        expect(screen.getByText('SNHU Transfer List')).toBeInTheDocument();
+        // Check if header branding is present
+        expect(screen.getByLabelText('SNHU Transfer Equivalency List home')).toBeInTheDocument();
 
         // Wait for course to appear (since it's loaded from our mock)
         await waitFor(() => {
