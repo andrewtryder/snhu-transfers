@@ -2,31 +2,25 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Page from './page';
 
-jest.mock('pg', () => {
-  return {
-    Client: jest.fn().mockImplementation(() => {
-      return {
-        connect: jest.fn().mockResolvedValue(undefined),
-        query: jest.fn().mockResolvedValue({
-          rows: [
-            {
-              id: 1,
-              subjectprefix: 'GEO',
-              coursenumber: 'GEO200',
-              title: 'Human Geography',
-              pid: 'r1XWeIg9U',
-              eligibilitytimeframe: 'Ongoing',
-              groupfilter2name: 'AP Exams',
-              academiclevel: 'Undergraduate',
-              coursepid: '5beef559ac5c642e00c11b58'
-            }
-          ]
-        }),
-        end: jest.fn().mockResolvedValue(undefined)
+jest.mock('../db', () => ({
+  db: {
+    select: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        subjectPrefix: 'GEO',
+        courseNumber: 'GEO200',
+        title: 'Human Geography',
+        pid: 'r1XWeIg9U',
+        eligibilityTimeframe: 'Ongoing',
+        groupFilter2Name: 'AP Exams',
+        academicLevel: 'Undergraduate',
+        coursePID: '5beef559ac5c642e00c11b58'
       }
-    })
+    ])
   }
-});
+}));
 
 describe('Page tests', () => {
     it('renders the page and interacts with the search and rows', async () => {
@@ -35,7 +29,7 @@ describe('Page tests', () => {
         render(ServerComponent);
 
         // Check if heading is present
-        expect(screen.getByText('SNHU Transfer List - Sorted by subject and course - Database Integrated')).toBeInTheDocument();
+        expect(screen.getByText('SNHU Transfer List')).toBeInTheDocument();
 
         // Wait for course to appear (since it's loaded from our mock)
         await waitFor(() => {
@@ -50,7 +44,7 @@ describe('Page tests', () => {
         expect(screen.getByText('AP Exams')).toBeInTheDocument();
 
         // Search for non-existent course
-        const searchInput = screen.getByPlaceholderText('Search courses...');
+        const searchInput = screen.getByPlaceholderText('Search by course, title, or organization...');
         fireEvent.change(searchInput, { target: { value: 'XYZ999' } });
 
         // GEO200 should not be visible anymore
