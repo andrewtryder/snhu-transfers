@@ -1,141 +1,143 @@
 # SNHU Transfer Equivalency List
 
-An unofficial, searchable index of Southern New Hampshire University (SNHU) transfer credit equivalencies. Browse accepted courses from AP Exams, Sophia Learning, Study.com, and other providers — grouped and filterable in one place.
+An unofficial transfer credit lookup tool for Southern New Hampshire University students.
 
-> **Disclaimer:** This project is not affiliated with SNHU. It is an unofficial compilation of publicly available transfer data. Always verify eligibility on the [official SNHU website](https://www.snhu.edu/admission/transferring-credits) and with your academic advisor before making transfer decisions.
+The SNHU Transfer Equivalency List helps students search and browse transfer credit equivalencies from providers such as AP Exams, Sophia Learning, Study.com, and other organizations. It is designed to make it easier to explore which outside learning experiences may transfer into SNHU as credit while planning a degree path.
+
+## Why This Exists
+
+I built this site as a proud SNHU graduate who understands how valuable transfer credits can be when planning a degree.
+
+During my time at Southern New Hampshire University, transfer credits helped shape my academic path and made it easier to move through my program efficiently. But finding and comparing transfer equivalencies can be time-consuming, especially when checking multiple providers, course codes, academic levels, and eligibility windows.
+
+This tool was designed to give SNHU students a simpler way to explore transfer options in one searchable place. Search by course, provider, or title; browse equivalencies by subject, organization, or academic level; and use the results as a planning aid before confirming details with SNHU.
+
+## Disclaimer
+
+This site is unofficial and is intended for informational purposes only.
+
+Transfer evaluations, eligibility windows, course mappings, provider offerings, and SNHU policies can change. Always confirm transfer eligibility on the official SNHU website and with your academic advisor before making academic or financial decisions.
+
+This project is not affiliated with, endorsed by, or operated by Southern New Hampshire University.
+
+## Related Project
+
+I also built [SNHU Course Prerequisites Tool](https://github.com/andrewtryder/snhu-courses), another tool for SNHU students that makes it easier to search courses and visualize prerequisite relationships while planning a degree path.
 
 ## Features
 
-- Search by course code, title, or organization
-- Group results by **Subject**, **Organization**, or **Academic Level**
-- Expandable rows showing eligibility timeframe and links to official SNHU experience pages
-- Monthly automated data refresh via Vercel Cron
+- Search SNHU transfer equivalencies by course code, title, or organization
+- Browse results by subject, provider organization, or academic level
+- View transfer titles, eligibility timeframes, and academic levels
+- Link to official SNHU transfer experience pages when available
+- Refresh transfer data from SNHU's public Kuali catalog API
+- Include basic SEO support through metadata, `robots.txt`, and `sitemap.xml`
 
-## How it works
+## Tech Stack
 
-```mermaid
-flowchart LR
-  KualiAPI["SNHU Kuali API"] -->|"GET /api/update-courses"| UpdateRoute["update-courses route"]
-  UpdateRoute --> NeonDB["Neon PostgreSQL"]
-  NeonDB --> ServerPage["page.tsx Server Component"]
-  ServerPage --> ClientUI["ClientPage.tsx"]
-  VercelCron["Vercel Cron monthly"] --> UpdateRoute
+- [Next.js](https://nextjs.org/) App Router
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Drizzle ORM](https://orm.drizzle.team/) for database queries
+- [Neon](https://neon.tech/) / PostgreSQL for transfer equivalency data
+- [Vercel](https://vercel.com/) for hosting, cron jobs, and analytics
+- [Lucide React](https://lucide.dev/) for icons
+
+## Architecture Overview
+
+This project is a Next.js application hosted on Vercel.
+
+At a high level, the app is organized around a server-rendered data load from PostgreSQL, followed by a client-side search and browsing interface:
+
+```text
+src/
+  app/
+    api/
+      update-courses/
+        route.ts
+    ClientPage.tsx
+    layout.tsx
+    page.tsx
+    robots.ts
+    sitemap.ts
+
+  db/
+    index.ts
+    schema.ts
+
+scripts/
+  populate.ts
+  setup-db.ts
+  test-update.ts
 ```
 
-1. Course mappings are parsed from experience achievement criteria and written to a Neon PostgreSQL database via Drizzle ORM.
-2. The home page server component loads grouped course data from the database.
-3. A client component handles search, view tabs, and expandable row details.
-4. After each successful sync, the page cache is revalidated via `revalidatePath('/')`.
+## How It Works
 
-## Tech stack
+1. The update route fetches public transfer experience data from SNHU's Kuali catalog API.
+2. Course mappings are parsed from the experience achievement criteria.
+3. Parsed transfer equivalencies are written to PostgreSQL using Drizzle ORM.
+4. The homepage loads transfer data from the database in a server component.
+5. The client UI lets users search, group, and expand transfer equivalency results.
+6. After a successful update, the app revalidates the homepage so fresh data can be shown.
 
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 16 (App Router), React 19 |
-| Styling | Tailwind CSS 4 |
-| Database | Neon PostgreSQL via `@neondatabase/serverless` |
-| ORM | Drizzle ORM |
-| Hosting | Vercel (Analytics + Cron) |
-| Testing | Jest + React Testing Library |
+## Local Development
 
-Requires Node.js **24.x**.
+Install dependencies:
 
-## Prerequisites
+```bash
+npm install
+```
 
-- Node.js 24.x
-- A Neon (or compatible) PostgreSQL database
-- A `POSTGRES_URL` connection string
-
-## Environment variables
-
-Copy `.env.example` to `.env` and fill in your values:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `POSTGRES_URL` | Yes | Neon/Postgres connection string |
-| `CRON_SECRET` | Recommended in production | Bearer token protecting `/api/update-courses`; Vercel Cron sends this automatically |
+Create a `.env` file:
 
 ```bash
 POSTGRES_URL=postgresql://...
 CRON_SECRET=your-random-secret
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-## Local development
-
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Create `.env` with the variables above.
-
-3. Initialize the database table:
-
-   ```bash
-   npx tsx scripts/setup-db.ts
-   ```
-
-4. Populate course data from the Kuali API:
-
-   ```bash
-   npx tsx scripts/populate.ts
-   ```
-
-5. Start the dev server:
-
-   ```bash
-   npm run dev
-   ```
-
-6. Open [http://localhost:3000](http://localhost:3000).
-
-## Available scripts
-
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Start Next.js dev server |
-| `npm run build` | Production build |
-| `npm run start` | Run production server |
-| `npm run lint` | ESLint |
-| `npm test` | Jest tests |
-| `npx tsx scripts/setup-db.ts` | Drop/recreate `transfer_courses` table |
-| `npx tsx scripts/populate.ts` | Fetch from Kuali API and write to DB |
-
-## API and scheduled updates
-
-- **Endpoint:** `GET /api/update-courses`
-- **Auth:** `Authorization: Bearer $CRON_SECRET` (skipped locally if `CRON_SECRET` is unset)
-- **Schedule:** Monthly on the 1st at midnight UTC (`0 0 1 * *` in `vercel.json`)
-- **Behavior:** Fetches all experiences, parses course mappings from HTML criteria, replaces all rows in `transfer_courses`, and revalidates `/`
-
-## Project structure
-
-```
-src/
-  app/
-    page.tsx                      # Server component — loads courses from DB
-    ClientPage.tsx                # Client UI — search, grouping, expand rows
-    api/update-courses/route.ts   # Data sync endpoint
-  db/
-    schema.ts                     # Drizzle transfer_courses table definition
-    index.ts                      # Neon + Drizzle client
-scripts/
-  setup-db.ts                     # transfer_courses table creation
-  populate.ts                     # Run sync locally
-```
-
-## Testing
+Initialize the database:
 
 ```bash
-npm test
+npx tsx scripts/setup-db.ts
 ```
 
-Tests in `src/app/page.test.tsx` mock the database and cover page rendering, row expansion, and search filtering.
+Populate transfer course data:
 
-## Deployment (Vercel)
+```bash
+npx tsx scripts/populate.ts
+```
 
-1. Connect the repository to Vercel.
-2. Set `POSTGRES_URL` and `CRON_SECRET` in the project environment variables.
-3. Deploy — the cron schedule in `vercel.json` is applied automatically.
-4. Vercel attaches the cron secret to scheduled requests to `/api/update-courses`.
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## Available Scripts
+
+- `npm run dev` - Start the development server
+- `npm run build` - Create a production build
+- `npm run start` - Run the production server
+- `npm run lint` - Run ESLint
+- `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+
+## Deployment
+
+This project is designed to deploy on Vercel.
+
+Set the following environment variables in Vercel:
+
+- `POSTGRES_URL`
+- `CRON_SECRET`
+- `NEXT_PUBLIC_BASE_URL`
+
+The project includes a Vercel cron job that refreshes transfer data monthly by calling `/api/update-courses`.
+
+## License
+
+This project is provided as an unofficial educational planning aid. It is not affiliated with Southern New Hampshire University.
