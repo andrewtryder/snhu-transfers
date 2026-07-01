@@ -1,7 +1,6 @@
-import ClientPage from './ClientPage';
-import { db } from '../db';
-import { transferCourses } from '../db/schema';
-import { asc } from 'drizzle-orm';
+import type { Metadata } from "next";
+import ClientPage from "./ClientPage";
+import { getAllTransferRows, getFacetSummaries } from "@/lib/seoQueries";
 
 type Course = {
   title: string | null;
@@ -21,42 +20,88 @@ type CoursesData = {
   [subjectPrefix: string]: CoursesByGroup;
 };
 
-async function getCoursesData(): Promise<CoursesData> {
-  try {
-    const allCourses = await db.select().from(transferCourses).orderBy(asc(transferCourses.courseNumber));
+export const metadata: Metadata = {
+  title: {
+    absolute: "SNHU Transfer Equivalency List | Search Accepted Transfer Credits",
+  },
+  description:
+    "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course number, provider, subject, and level. Compare sources like Sophia Learning, Study.com, AP Exams, and more.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "SNHU Transfer Equivalency List | Search Accepted Transfer Credits",
+    description:
+      "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course number, provider, subject, and level. Compare sources like Sophia Learning, Study.com, AP Exams, and more.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "SNHU Transfer Equivalency List | Search Accepted Transfer Credits",
+    description:
+      "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course number, provider, subject, and level. Compare sources like Sophia Learning, Study.com, AP Exams, and more.",
+  },
+};
 
-    const data: CoursesData = {};
+function toCoursesData(rows: Awaited<ReturnType<typeof getAllTransferRows>>): CoursesData {
+  const data: CoursesData = {};
 
-    for (const row of allCourses) {
-      const subjectPrefix = row.subjectPrefix || 'UNKNOWN';
-      const courseNumber = row.courseNumber || 'UNKNOWN';
+  for (const row of rows) {
+    const subjectPrefix = row.subjectPrefix || "UNKNOWN";
+    const courseNumber = row.courseNumber || "UNKNOWN";
 
-      if (!data[subjectPrefix]) {
-        data[subjectPrefix] = {};
-      }
-      if (!data[subjectPrefix][courseNumber]) {
-        data[subjectPrefix][courseNumber] = [];
-      }
-
-      data[subjectPrefix][courseNumber].push({
-        title: row.title,
-        pid: row.pid,
-        eligibilityTimeframe: row.eligibilityTimeframe,
-        groupFilter2Name: row.groupFilter2Name,
-        academicLevel: row.academicLevel,
-        coursePID: row.coursePID,
-        courseName: row.courseNumber
-      });
+    if (!data[subjectPrefix]) {
+      data[subjectPrefix] = {};
+    }
+    if (!data[subjectPrefix][courseNumber]) {
+      data[subjectPrefix][courseNumber] = [];
     }
 
-    return data;
+    data[subjectPrefix][courseNumber].push({
+      title: row.title,
+      pid: row.pid,
+      eligibilityTimeframe: row.eligibilityTimeframe,
+      groupFilter2Name: row.groupFilter2Name,
+      academicLevel: row.academicLevel,
+      coursePID: row.coursePID,
+      courseName: row.courseNumber,
+    });
+  }
+
+  return data;
+}
+
+async function getHomepagePayload() {
+  try {
+    const rows = await getAllTransferRows();
+    const facets = await getFacetSummaries(20);
+    return { rows, facets };
   } catch (error) {
-    console.error("Failed to fetch courses from database:", error);
-    return {};
+    console.error("Failed to fetch homepage transfer data:", error);
+    throw error;
   }
 }
 
 export default async function Page() {
-  const coursesData = await getCoursesData();
-  return <ClientPage initialCoursesData={coursesData} />;
+  const { rows, facets } = await getHomepagePayload();
+
+  const webSiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "SNHU Transfers",
+    description:
+      "Unofficial SNHU transfer equivalency search tool for accepted transfer credits by course, provider, subject, and academic level.",
+    url: "/",
+    publisher: {
+      "@type": "Organization",
+      name: "SNHU Transfers",
+    },
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }} />
+      <ClientPage initialCoursesData={toCoursesData(rows)} seoFacets={facets} />
+    </>
+  );
 }

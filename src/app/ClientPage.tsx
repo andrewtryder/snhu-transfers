@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, KeyboardEvent } from "react";
+import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { AppHeader, type ViewType } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -23,7 +24,26 @@ type CoursesData = {
   [subjectPrefix: string]: CoursesByGroup;
 };
 
-export default function ClientPage({ initialCoursesData }: { initialCoursesData: CoursesData }) {
+type FacetSummary = {
+  value: string;
+  count: number;
+  slug: string;
+};
+
+type SeoFacets = {
+  subjects: FacetSummary[];
+  organizations: FacetSummary[];
+  levels: FacetSummary[];
+  courses: FacetSummary[];
+};
+
+export default function ClientPage({
+  initialCoursesData,
+  seoFacets,
+}: {
+  initialCoursesData: CoursesData;
+  seoFacets: SeoFacets;
+}) {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [activeView, setActiveView] = useState<ViewType>("subject");
@@ -100,8 +120,75 @@ export default function ClientPage({ initialCoursesData }: { initialCoursesData:
 
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col px-4 py-6 md:px-8 md:py-8 pb-28"
+        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col gap-6 px-4 py-6 pb-28 md:px-8 md:py-8"
       >
+        <section className="rounded-lg border border-surface-variant bg-surface-container-low p-5">
+          <h1 className="font-[family-name:var(--font-headline)] text-2xl font-semibold text-primary md:text-3xl">
+            SNHU Transfer Equivalency List
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-on-surface-variant md:text-base">
+            Search unofficial SNHU transfer equivalencies by course, provider, subject, and academic level.
+            Browse crawlable landing pages below for popular topics, then use the interactive table to filter
+            details.
+          </p>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <h2 className="text-sm font-semibold text-on-surface">Top Subjects</h2>
+              <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                {seoFacets.subjects.slice(0, 8).map((item) => (
+                  <li key={`subject-${item.slug}`}>
+                    <Link href={`/subjects/${item.slug}`} className="hover:text-primary hover:underline">
+                      {item.value} ({item.count})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-on-surface">Top Organizations</h2>
+              <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                {seoFacets.organizations.slice(0, 8).map((item) => (
+                  <li key={`org-${item.slug}`}>
+                    <Link href={`/organizations/${item.slug}`} className="hover:text-primary hover:underline">
+                      {item.value} ({item.count})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-on-surface">Academic Levels</h2>
+              <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                {seoFacets.levels.slice(0, 8).map((item) => (
+                  <li key={`level-${item.slug}`}>
+                    <Link href={`/levels/${item.slug}`} className="hover:text-primary hover:underline">
+                      {item.value} ({item.count})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-on-surface">Popular Courses</h2>
+              <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
+                {seoFacets.courses.slice(0, 8).map((item) => (
+                  <li key={`course-${item.slug}`}>
+                    <Link href={`/courses/${item.slug}`} className="hover:text-primary hover:underline">
+                      {item.value} ({item.count})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <p className="mt-5 text-xs text-on-surface-variant">
+            <strong className="text-on-surface">Disclaimer:</strong> This is an unofficial compilation.
+            Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor.
+          </p>
+        </section>
+
         <div className="overflow-hidden rounded-lg border border-surface-variant bg-surface-container-lowest shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-surface-variant">

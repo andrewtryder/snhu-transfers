@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,28 +15,34 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'))),
-  title: "SNHU Transfer Equivalency List",
-  description: "Find SNHU transfer equivalencies for your academic journey. Explore accepted courses from AP Exams, Sophia Learning, Study.com, and more.",
-  keywords: ["SNHU", "transfer equivalency", "college credits", "Southern New Hampshire University", "AP Exams", "Sophia Learning", "Study.com", "transfer credits"],
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "SNHU Transfer Equivalency List",
+    template: "%s | SNHU Transfers",
+  },
+  description:
+    "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course number, subject, provider, and academic level for Southern New Hampshire University (SNHU).",
   robots: {
     index: true,
     follow: true,
   },
   alternates: {
-    canonical: '/',
+    canonical: "/",
   },
   openGraph: {
     title: "SNHU Transfer Equivalency List",
-    description: "Easily find transfer equivalencies for your academic journey at Southern New Hampshire University.",
+    description:
+      "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course, provider, subject, and level.",
+    url: "/",
     type: "website",
     locale: "en_US",
     siteName: "SNHU Transfers",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "SNHU Transfer Equivalency List",
-    description: "Easily find transfer equivalencies for your academic journey at Southern New Hampshire University.",
+    description:
+      "Search unofficial SNHU transfer equivalencies and accepted transfer credits by course, provider, subject, and level.",
   },
 };
 

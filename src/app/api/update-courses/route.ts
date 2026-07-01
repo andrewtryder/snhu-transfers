@@ -92,7 +92,13 @@ export async function GET(request: Request) {
         }
 
         try {
-            revalidatePath('/');
+            revalidatePath("/", "layout");
+            revalidatePath("/about");
+            revalidatePath("/subjects");
+            revalidatePath("/organizations");
+            revalidatePath("/levels");
+            revalidatePath("/courses");
+            revalidatePath("/sitemap.xml");
         } catch {
             // revalidatePath only works inside a Next.js request context
         }
