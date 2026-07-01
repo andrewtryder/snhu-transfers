@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+import { revalidatePath } from 'next/cache';
+import { db } from '../../../db';
+import { courses } from '../../../db/schema';
 
-export const maxDuration = 60; // 5 minutes (requires Pro plan usually, but we can set it to the max allowed)
+export const maxDuration = 60; // 1 minute limit on hobby
 
 const LIST_EXPERIENCES_URL = 'https://snhu.kuali.co/api/v1/catalog/experiences/62d0386e064ce7001cec61d1?q=';
 const EXPERIENCE_DETAIL_URL_PREFIX = 'https://snhu.kuali.co/api/v1/catalog/experience/62d0386e064ce7001cec61d1/';
@@ -28,13 +30,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const client = new Client({
-      connectionString: process.env.POSTGRES_URL,
-    });
-
     try {
-        await client.connect();
-
         console.log("Fetching list of all experiences...");
         const experiencesList = await fetchWithRetry(LIST_EXPERIENCES_URL);
 
@@ -46,9 +42,8 @@ export async function GET(request: Request) {
 
         console.log(`Found ${experiencesList.length} experiences to process.`);
 
-        const parsedCourses: Record<string, unknown>[] = [];
+        const parsedCourses: typeof courses.$inferInsert[] = [];
 
-        // Process in batches of 20 to avoid overwhelming the Kuali API
         const batchSize = 20;
         for (let i = 0; i < experiencesList.length; i += batchSize) {
             const batch = experiencesList.slice(i, i + batchSize);
@@ -86,36 +81,25 @@ export async function GET(request: Request) {
             });
 
             await Promise.all(batchPromises);
-
-            // Add a small delay between batches
             await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        console.log(`Extracted ${parsedCourses.length} mapped courses. Writing to database...`);
+        console.log(`Extracted ${parsedCourses.length} mapped courses. Writing to database via Drizzle...`);
 
-        // Start a transaction
-        await client.query('BEGIN');
+        await db.transaction(async (tx) => {
+           await tx.delete(courses);
+           // Drizzle insert supports arrays for bulk insert
+           if (parsedCourses.length > 0) {
+              await tx.insert(courses).values(parsedCourses);
+           }
+        });
 
-        await client.query('DELETE FROM courses');
-
-        for (const c of parsedCourses) {
-            await client.query(
-                `INSERT INTO courses ("subjectprefix", "coursenumber", "title", "pid", "eligibilitytimeframe", "groupfilter2name", "academiclevel", "coursepid")
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-                [c.subjectPrefix, c.courseNumber, c.title, c.pid, c.eligibilityTimeframe, c.groupFilter2Name, c.academicLevel, c.coursePID]
-            );
-        }
-
-        await client.query('COMMIT');
+        // Trigger On-Demand Revalidation so the static page updates with the new data
+        revalidatePath('/');
 
         return NextResponse.json({ success: true, count: parsedCourses.length });
     } catch (error) {
         console.error("Error during update process:", error);
-        if (client) {
-            await client.query('ROLLBACK');
-        }
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    } finally {
-        await client.end();
     }
 }

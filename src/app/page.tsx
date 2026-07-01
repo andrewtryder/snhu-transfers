@@ -1,7 +1,7 @@
-import { Client } from 'pg';
 import ClientPage from './ClientPage';
-
-export const revalidate = 0; // Disable static rendering for now so we always get fresh data
+import { db } from '../db';
+import { courses } from '../db/schema';
+import { asc } from 'drizzle-orm';
 
 type Course = {
   title: string | null;
@@ -13,31 +13,23 @@ type Course = {
   courseName: string | null;
 };
 
-type CoursesByNumber = {
-  [courseNumber: string]: Course[];
+type CoursesByGroup = {
+  [groupName: string]: Course[];
 };
 
 type CoursesData = {
-  [subjectPrefix: string]: CoursesByNumber;
+  [subjectPrefix: string]: CoursesByGroup;
 };
 
 async function getCoursesData(): Promise<CoursesData> {
-  const client = new Client({
-    connectionString: process.env.POSTGRES_URL,
-  });
-
   try {
-    await client.connect();
-
-    // Explicitly order by courseNumber to ensure sorting
-    const res = await client.query('SELECT * FROM courses ORDER BY "coursenumber" ASC');
+    const allCourses = await db.select().from(courses).orderBy(asc(courses.courseNumber));
 
     const data: CoursesData = {};
 
-    for (const row of res.rows) {
-      // The Postgres driver returns column names in lowercase unless quoted in the schema
-      const subjectPrefix = row.subjectprefix;
-      const courseNumber = row.coursenumber;
+    for (const row of allCourses) {
+      const subjectPrefix = row.subjectPrefix || 'UNKNOWN';
+      const courseNumber = row.courseNumber || 'UNKNOWN';
 
       if (!data[subjectPrefix]) {
         data[subjectPrefix] = {};
@@ -49,11 +41,11 @@ async function getCoursesData(): Promise<CoursesData> {
       data[subjectPrefix][courseNumber].push({
         title: row.title,
         pid: row.pid,
-        eligibilityTimeframe: row.eligibilitytimeframe,
-        groupFilter2Name: row.groupfilter2name,
-        academicLevel: row.academiclevel,
-        coursePID: row.coursepid,
-        courseName: row.coursenumber
+        eligibilityTimeframe: row.eligibilityTimeframe,
+        groupFilter2Name: row.groupFilter2Name,
+        academicLevel: row.academicLevel,
+        coursePID: row.coursePID,
+        courseName: row.courseNumber
       });
     }
 
@@ -61,8 +53,6 @@ async function getCoursesData(): Promise<CoursesData> {
   } catch (error) {
     console.error("Failed to fetch courses from database:", error);
     return {};
-  } finally {
-    await client.end();
   }
 }
 
