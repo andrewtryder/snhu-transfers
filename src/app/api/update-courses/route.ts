@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 
         for (const c of parsedCourses) {
             await client.query(
-                `INSERT INTO courses (subjectPrefix, courseNumber, title, pid, eligibilityTimeframe, groupFilter2Name, academicLevel, coursePID)
+                `INSERT INTO courses ("subjectprefix", "coursenumber", "title", "pid", "eligibilitytimeframe", "groupfilter2name", "academiclevel", "coursepid")
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                 [c.subjectPrefix, c.courseNumber, c.title, c.pid, c.eligibilityTimeframe, c.groupFilter2Name, c.academicLevel, c.coursePID]
             );
