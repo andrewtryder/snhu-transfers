@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, KeyboardEvent } from "react";
 import coursesDataRaw from "../data/courses.json";
 
 // Define the types based on data.json
@@ -22,8 +22,7 @@ type CoursesData = {
   [subjectPrefix: string]: CoursesByNumber;
 };
 
-// Use unknown first to satisfy TypeScript's strict type checking
-const coursesData = coursesDataRaw as unknown as CoursesData;
+const coursesData: CoursesData = coursesDataRaw as CoursesData;
 
 export default function Home() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -35,6 +34,34 @@ export default function Home() {
       [id]: !prev[id],
     }));
   };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>, id: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleRow(id);
+    }
+  };
+
+  const filteredCourses = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
+    const result: Array<{ subjectPrefix: string; courseNumber: string; coursesList: Course[] }> = [];
+
+    for (const [subjectPrefix, prefixCoursesDict] of Object.entries(coursesData)) {
+      for (const [courseNumber, coursesList] of Object.entries(prefixCoursesDict)) {
+        const matchesSearch =
+          courseNumber.toLowerCase().includes(searchLower) ||
+          coursesList.some((course) =>
+            (course.title && course.title.toLowerCase().includes(searchLower)) ||
+            (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
+          );
+
+        if (matchesSearch) {
+          result.push({ subjectPrefix, courseNumber, coursesList });
+        }
+      }
+    }
+    return result;
+  }, [searchTerm]);
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
@@ -50,6 +77,7 @@ export default function Home() {
         </div>
         <input
           type="text"
+          aria-label="Search courses"
           className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#0077b6] focus:border-[#0077b6] sm:text-sm"
           placeholder="Search courses..."
           value={searchTerm}
@@ -68,18 +96,7 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(coursesData).map(([subjectPrefix, prefixCoursesDict]) => (
-              Object.entries(prefixCoursesDict).map(([courseNumber, coursesList]) => {
-                const searchLower = searchTerm.toLowerCase();
-                const matchesSearch =
-                  courseNumber.toLowerCase().includes(searchLower) ||
-                  coursesList.some((course) =>
-                    (course.title && course.title.toLowerCase().includes(searchLower)) ||
-                    (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
-                  );
-
-                if (!matchesSearch) return null;
-
+            {filteredCourses.map(({ subjectPrefix, courseNumber, coursesList }) => {
                 const rowId = `${subjectPrefix}-${courseNumber}`;
                 const isExpanded = expandedRows[rowId];
 
@@ -88,6 +105,10 @@ export default function Home() {
                     {/* Course Header Row */}
                     <tr
                       className="cursor-pointer bg-gray-100 hover:bg-gray-200 transition-colors"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onKeyDown={(e) => handleKeyDown(e, rowId)}
                       onClick={() => toggleRow(rowId)}
                     >
                       <td colSpan={4} className="p-3 border border-gray-300 font-bold text-gray-800">
@@ -123,8 +144,7 @@ export default function Home() {
                       ))}
                   </React.Fragment>
                 );
-              })
-            ))}
+            })}
           </tbody>
         </table>
       </div>
