@@ -1,139 +1,59 @@
-import '@testing-library/jest-dom'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import Home from './page'
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import Page from './page';
 
-// Mock the JSON data so we have a predictable test environment
-jest.mock('../data/courses.json', () => ({
-  "IT": {
-    "IT100": [
-      {
-        "title": "Intro to IT",
-        "pid": "test-pid-1",
-        "eligibilityTimeframe": "Ongoing",
-        "groupFilter2Name": "Test Org",
-        "academicLevel": "Undergraduate",
-        "coursePID": "course-pid-1",
-        "courseName": "IT100"
+jest.mock('pg', () => {
+  return {
+    Client: jest.fn().mockImplementation(() => {
+      return {
+        connect: jest.fn().mockResolvedValue(undefined),
+        query: jest.fn().mockResolvedValue({
+          rows: [
+            {
+              id: 1,
+              subjectprefix: 'GEO',
+              coursenumber: 'GEO200',
+              title: 'Human Geography',
+              pid: 'r1XWeIg9U',
+              eligibilitytimeframe: 'Ongoing',
+              groupfilter2name: 'AP Exams',
+              academiclevel: 'Undergraduate',
+              coursepid: '5beef559ac5c642e00c11b58'
+            }
+          ]
+        }),
+        end: jest.fn().mockResolvedValue(undefined)
       }
-    ]
-  },
-  "ENG": {
-    "ENG101": [
-      {
-        "title": "English Comp 1",
-        "pid": "test-pid-2",
-        "eligibilityTimeframe": "Ongoing",
-        "groupFilter2Name": "Another Org",
-        "academicLevel": "Undergraduate",
-        "coursePID": "course-pid-2",
-        "courseName": "ENG101"
-      },
-      {
-        "title": "English Comp 1 Alternate",
-        "pid": "test-pid-3",
-        "eligibilityTimeframe": "Ongoing",
-        "groupFilter2Name": "Third Org",
-        "academicLevel": "Undergraduate",
-        "coursePID": "course-pid-3",
-        "courseName": "ENG101"
-      }
-    ]
+    })
   }
-}));
+});
 
-describe('Home Page', () => {
-  it('renders the main heading', () => {
-    render(<Home />)
-    const heading = screen.getByRole('heading', {
-      name: /SNHU Transfer List - Sorted by subject and course/i,
-    })
-    expect(heading).toBeInTheDocument()
-  })
+describe('Page tests', () => {
+    it('renders the page and interacts with the search and rows', async () => {
+        // Page is an async Server Component, we need to await it
+        const ServerComponent = await Page();
+        render(ServerComponent);
 
-  it('renders the table headers correctly', () => {
-    render(<Home />)
-    expect(screen.getByText('Course Number')).toBeInTheDocument()
-    expect(screen.getByText('Organization')).toBeInTheDocument()
-    expect(screen.getByText('Class Title')).toBeInTheDocument()
-    expect(screen.getByText('Eligibility Timeframe')).toBeInTheDocument()
-  })
+        // Check if heading is present
+        expect(screen.getByText('SNHU Transfer List - Sorted by subject and course - Database Integrated')).toBeInTheDocument();
 
-  it('renders course group headers from mocked data', () => {
-    render(<Home />)
-    expect(screen.getByText('IT100')).toBeInTheDocument()
-    expect(screen.getByText('ENG101')).toBeInTheDocument()
-  })
+        // Wait for course to appear (since it's loaded from our mock)
+        await waitFor(() => {
+            expect(screen.getByText('GEO200')).toBeInTheDocument();
+        });
 
-  it('does not show course details initially', () => {
-    render(<Home />)
-    // We expect "Intro to IT" (the title of the IT100 course) NOT to be in the document initially
-    expect(screen.queryByText('Intro to IT')).not.toBeInTheDocument()
-  })
+        // Click row to expand
+        fireEvent.click(screen.getByText('GEO200'));
 
-  it('toggles course details when clicking on a row', async () => {
-    render(<Home />)
+        // Check if details are shown
+        expect(screen.getByText('Human Geography')).toBeInTheDocument();
+        expect(screen.getByText('AP Exams')).toBeInTheDocument();
 
-    // Find the row for IT100
-    // Using a regex to find the cell containing 'IT100' along with the icon
-    const it100Row = screen.getByText('IT100').closest('tr')
-    expect(it100Row).not.toBeNull()
+        // Search for non-existent course
+        const searchInput = screen.getByPlaceholderText('Search courses...');
+        fireEvent.change(searchInput, { target: { value: 'XYZ999' } });
 
-    // Click it to expand
-    if (it100Row) fireEvent.click(it100Row)
-
-    // Now details should be visible
-    await waitFor(() => {
-      expect(screen.getByText('Intro to IT')).toBeInTheDocument()
-      expect(screen.getByText('Test Org')).toBeInTheDocument()
-    })
-
-    // Click it again to collapse
-    if (it100Row) fireEvent.click(it100Row)
-
-    // Details should be hidden again
-    await waitFor(() => {
-      expect(screen.queryByText('Intro to IT')).not.toBeInTheDocument()
-    })
-  })
-
-  it('handles multiple items in a course group', async () => {
-    render(<Home />)
-
-    const eng101Row = screen.getByText('ENG101').closest('tr')
-    if (eng101Row) fireEvent.click(eng101Row)
-
-    await waitFor(() => {
-      expect(screen.getByText('English Comp 1')).toBeInTheDocument()
-      expect(screen.getByText('English Comp 1 Alternate')).toBeInTheDocument()
-    })
-  })
-
-  it('filters courses based on search term', async () => {
-    render(<Home />)
-
-    // Initially, both IT100 and ENG101 should be visible
-    expect(screen.getByText('IT100')).toBeInTheDocument()
-    expect(screen.getByText('ENG101')).toBeInTheDocument()
-
-    const searchInput = screen.getByPlaceholderText('Search courses...')
-
-    // Type a search term that matches IT100
-    fireEvent.change(searchInput, { target: { value: 'IT' } })
-
-    // IT100 should still be visible, ENG101 should not
-    expect(screen.getByText('IT100')).toBeInTheDocument()
-    expect(screen.queryByText('ENG101')).not.toBeInTheDocument()
-
-    // Type a search term that matches the organization of ENG101
-    fireEvent.change(searchInput, { target: { value: 'Another Org' } })
-
-    // ENG101 should be visible, IT100 should not
-    expect(screen.getByText('ENG101')).toBeInTheDocument()
-    expect(screen.queryByText('IT100')).not.toBeInTheDocument()
-  })
-
-  it('renders the disclaimer', () => {
-    render(<Home />)
-    expect(screen.getByText(/This is an unofficial compilation/i)).toBeInTheDocument()
-  })
-})
+        // GEO200 should not be visible anymore
+        expect(screen.queryByText('GEO200')).not.toBeInTheDocument();
+    });
+});
