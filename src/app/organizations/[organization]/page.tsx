@@ -44,17 +44,27 @@ export default async function OrganizationPage({ params }: { params: Promise<Par
 
   const related = getRelatedFacets(rows);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `${organizationValue} SNHU Transfer Credits`,
-    itemListElement: rows.slice(0, 50).map((row, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: `${row.courseNumber || "Unknown"} - ${row.title || "Transfer"}`,
-      url: row.courseNumber ? canonicalPath(`/courses/${slugify(row.courseNumber)}`, siteUrl) : canonicalPath(`/organizations/${organization}`, siteUrl),
-    })),
-  };
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: `${organizationValue} SNHU Transfer Credits`,
+      itemListElement: rows.slice(0, 50).map((row, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: `${row.courseNumber || "Unknown"} - ${row.title || "Transfer"}`,
+        url: row.courseNumber ? canonicalPath(`/courses/${slugify(row.courseNumber)}`, siteUrl) : canonicalPath(`/organizations/${organization}`, siteUrl),
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: organizationValue },
+      ],
+    }
+  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
