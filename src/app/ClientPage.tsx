@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, KeyboardEvent } from "react";
+import React, { useState, useMemo, KeyboardEvent, useDeferredValue } from "react";
 import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { AppHeader, type ViewType } from "@/components/AppHeader";
@@ -14,6 +14,7 @@ type Course = {
   academicLevel: string | null;
   coursePID: string | null;
   courseName: string | null;
+  searchString?: string;
 };
 
 type CoursesByGroup = {
@@ -46,13 +47,19 @@ export default function ClientPage({
 }) {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [activeView, setActiveView] = useState<ViewType>("subject");
 
   const allCourses = useMemo(() => {
     const courses: Course[] = [];
     for (const prefix of Object.values(initialCoursesData)) {
       for (const courseList of Object.values(prefix)) {
-        courses.push(...courseList);
+        for (const course of courseList) {
+          courses.push({
+            ...course,
+            searchString: `${course.courseName || ""} ${course.title || ""} ${course.groupFilter2Name || ""}`.toLowerCase(),
+          });
+        }
       }
     }
     return courses;
@@ -73,13 +80,10 @@ export default function ClientPage({
   };
 
   const groupedAndFilteredCourses = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = deferredSearchTerm.toLowerCase();
 
     const filtered = allCourses.filter(
-      (course) =>
-        (course.courseName && course.courseName.toLowerCase().includes(searchLower)) ||
-        (course.title && course.title.toLowerCase().includes(searchLower)) ||
-        (course.groupFilter2Name && course.groupFilter2Name.toLowerCase().includes(searchLower))
+      (course) => course.searchString?.includes(searchLower)
     );
 
     const grouped: Record<string, Course[]> = {};
@@ -106,7 +110,7 @@ export default function ClientPage({
         groupName: key,
         coursesList: grouped[key],
       }));
-  }, [allCourses, searchTerm, activeView]);
+  }, [allCourses, deferredSearchTerm, activeView]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
