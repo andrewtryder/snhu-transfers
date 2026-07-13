@@ -86,11 +86,12 @@ scripts/
 ## How It Works
 
 1. Transfer sync fetches public transfer experience data from SNHU's Kuali API (experiences only — not the full course catalog).
-2. Course mappings are parsed from the experience achievement criteria using SNHU course codes (e.g. `CS499`) as the cross-project identifier.
-3. Rows are written to `transfer_courses_stage`, then atomically promoted into `transfer_courses`.
-4. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
-5. The client UI lets users search, group, and expand transfer equivalency results.
-6. After a successful promote, the cron route revalidates cached pages.
+2. On refresh start, experience PIDs are snapshotted into `transfer_sync_items`. Later cron ticks resume from that immutable list instead of re-downloading and re-slicing the live Kuali response.
+3. Course mappings are parsed from the experience achievement criteria using SNHU course codes (e.g. `CS499`) as the cross-project identifier.
+4. Rows are written to `transfer_courses_stage`, then atomically promoted into `transfer_courses`.
+5. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
+6. The client UI lets users search, group, and expand transfer equivalency results.
+7. After a successful promote, the cron route revalidates cached pages.
 
 ## Local Development
 

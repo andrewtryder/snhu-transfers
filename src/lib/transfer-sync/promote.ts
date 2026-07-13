@@ -1,5 +1,5 @@
 import type { Client } from 'pg';
-import { abortToIdle, markCompleted } from './persist';
+import { abortToIdle, countSyncItems, getSyncState, markCompleted } from './persist';
 
 export interface ValidationResult {
   ok: boolean;
@@ -16,6 +16,21 @@ export async function validateStaging(client: Client): Promise<ValidationResult>
 
   if (stageCount === 0) {
     errors.push('transfer_courses_stage is empty');
+  }
+
+  const state = await getSyncState(client);
+  if (!state.sync_id) {
+    errors.push('transfer_sync_state.sync_id is missing');
+  } else {
+    const snapshotCount = await countSyncItems(client, state.sync_id);
+    const expected = state.expected_count;
+    if (expected === null) {
+      errors.push('transfer_sync_state.expected_count is missing');
+    } else if (snapshotCount !== expected) {
+      errors.push(
+        `transfer_sync_items count (${snapshotCount}) !== expected_count (${expected})`
+      );
+    }
   }
 
   return { ok: errors.length === 0, errors };

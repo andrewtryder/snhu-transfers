@@ -1,14 +1,15 @@
 import { Client } from 'pg';
-import { fetchExperienceDetail, fetchExperiences, type KualiExperienceListItem } from './fetch';
+import { fetchExperienceDetail, fetchExperiences } from './fetch';
 import { parseExperienceDetail, type ParsedTransferCourse } from './parse';
 import {
+  abortToIdle,
   advanceCursor,
+  getSyncItems,
   getSyncState,
   insertStagedTransfer,
-  isLeaseActive,
-  refreshLease,
   setSyncError,
   startRefresh,
+  tryClaimLease,
   type TransferSyncState,
 } from './persist';
 import { promoteStaging } from './promote';
@@ -58,13 +59,12 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-async function fetchAndParseBatch(
-  listItems: KualiExperienceListItem[],
+async function fetchAndParsePids(
+  pids: string[],
   concurrency: number
 ): Promise<ParsedTransferCourse[]> {
-  const nested = await mapWithConcurrency(listItems, concurrency, async (item) => {
-    if (!item.pid) return [] as ParsedTransferCourse[];
-    const detail = await fetchExperienceDetail(item.pid);
+  const nested = await mapWithConcurrency(pids, concurrency, async (pid) => {
+    const detail = await fetchExperienceDetail(pid);
     if (!detail) return [] as ParsedTransferCourse[];
     return parseExperienceDetail(detail);
   });
@@ -83,8 +83,82 @@ async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
   }
 }
 
+async function processSnapshotBatch(
+  client: Client,
+  state: TransferSyncState,
+  batchSize: number,
+  concurrency: number
+): Promise<TransferSyncResult> {
+  if (!state.sync_id) {
+    const message =
+      'Running transfer sync is missing sync_id; aborting incompatible mid-flight state. Re-run after migrate.';
+    await abortToIdle(client, message);
+    return { action: 'error', error: message };
+  }
+
+  const expected = state.expected_count ?? 0;
+  const cursor = state.cursor;
+
+  if (cursor >= expected) {
+    await promoteStaging(client);
+    return {
+      action: 'promoted',
+      processed: 0,
+      imported: state.imported_count,
+      expected,
+      done: true,
+    };
+  }
+
+  const items = await getSyncItems(client, state.sync_id, cursor, batchSize);
+  if (items.length === 0) {
+    await promoteStaging(client);
+    return {
+      action: 'promoted',
+      processed: 0,
+      imported: state.imported_count,
+      expected,
+      done: true,
+    };
+  }
+
+  const parsed = await fetchAndParsePids(
+    items.map((item) => item.pid),
+    concurrency
+  );
+
+  for (const row of parsed) {
+    await insertStagedTransfer(client, row);
+  }
+
+  const lastOrdinal = items[items.length - 1].ordinal;
+  const newCursor = lastOrdinal + 1;
+  await advanceCursor(client, newCursor, parsed.length);
+  const importedTotal = state.imported_count + parsed.length;
+
+  if (newCursor >= expected) {
+    await promoteStaging(client);
+    return {
+      action: 'promoted',
+      processed: items.length,
+      imported: importedTotal,
+      expected,
+      done: true,
+    };
+  }
+
+  return {
+    action: 'batch',
+    processed: items.length,
+    imported: parsed.length,
+    cursor: newCursor,
+    expected,
+    done: false,
+  };
+}
+
 /**
- * Full local bootstrap: fetch all experiences, fill staging, validate, promote.
+ * Full local bootstrap: snapshot experience PIDs, fill staging from that list, promote.
  */
 export async function bootstrapTransfer(
   options: { concurrency?: number; batchSize?: number } = {}
@@ -95,30 +169,41 @@ export async function bootstrapTransfer(
   return withClient(async (client) => {
     console.log('Fetching complete experience list...');
     const experiences = await fetchExperiences();
+    const pids = experiences
+      .map((exp) => exp.pid)
+      .filter((pid): pid is string => Boolean(pid));
 
-    console.log(`Found ${experiences.length} experiences. Starting staging import...`);
-    await startRefresh(client, experiences.length);
+    console.log(`Found ${pids.length} experiences. Starting staging import...`);
+    await startRefresh(client, pids);
 
-    for (let i = 0; i < experiences.length; i += batchSize) {
-      const slice = experiences.slice(i, i + batchSize);
-      const parsed = await fetchAndParseBatch(slice, concurrency);
+    let state = await getSyncState(client);
+    const expected = state.expected_count ?? pids.length;
 
-      for (const row of parsed) {
-        await insertStagedTransfer(client, row);
+    while (state.cursor < expected) {
+      const result = await processSnapshotBatch(client, state, batchSize, concurrency);
+      if (result.action === 'error') {
+        throw new Error(result.error);
       }
-
-      const newCursor = i + slice.length;
-      await advanceCursor(client, newCursor, parsed.length);
+      if (result.action === 'promoted') {
+        console.log('Bootstrap complete');
+        return {
+          imported: result.imported,
+          expected: result.expected,
+        };
+      }
+      if (result.action !== 'batch') {
+        throw new Error(`Unexpected sync action during bootstrap: ${result.action}`);
+      }
       console.log(
-        `Staged batch: ${parsed.length} rows, cursor ${newCursor}/${experiences.length}`
+        `Staged batch: ${result.imported} rows, cursor ${result.cursor}/${result.expected}`
       );
-
-      if (i + batchSize < experiences.length) {
+      state = await getSyncState(client);
+      if (state.cursor < expected) {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    const state = await getSyncState(client);
+    state = await getSyncState(client);
     console.log(
       `Validating and promoting (${state.imported_count} staged rows from ${state.expected_count} experiences)...`
     );
@@ -127,15 +212,15 @@ export async function bootstrapTransfer(
 
     return {
       imported: state.imported_count,
-      expected: state.expected_count ?? experiences.length,
+      expected: state.expected_count ?? expected,
     };
   });
 }
 
 /**
  * One cron/local sync tick:
- * - if running: process next batch (and promote when finished)
- * - else if due: start refresh and process first batch
+ * - if running: process next batch from the persisted snapshot (and promote when finished)
+ * - else if due: fetch Kuali once, snapshot PIDs, process first batch
  * - else: skip
  */
 export async function runTransferSync(
@@ -149,17 +234,9 @@ export async function runTransferSync(
     try {
       let state = await getSyncState(client);
       const now = new Date();
+      const wasRunning = state.status === 'running';
 
-      if (state.status === 'running') {
-        if (!ignoreLease && isLeaseActive(state, now)) {
-          return {
-            action: 'skipped',
-            reason: 'lease_held',
-            state,
-          };
-        }
-        await refreshLease(client);
-      } else {
+      if (!wasRunning) {
         const due =
           state.next_due_at === null || state.next_due_at.getTime() <= now.getTime();
         if (!due) {
@@ -169,59 +246,30 @@ export async function runTransferSync(
             state,
           };
         }
+      }
 
-        console.log('Transfer refresh due; fetching experience list...');
+      const claimed = await tryClaimLease(client, { force: ignoreLease });
+      if (!claimed) {
+        return {
+          action: 'skipped',
+          reason: 'lease_held',
+          state,
+        };
+      }
+
+      if (!wasRunning) {
+        console.log('Transfer refresh due; fetching experience list once...');
         const experiences = await fetchExperiences();
-        await startRefresh(client, experiences.length);
+        const pids = experiences
+          .map((exp) => exp.pid)
+          .filter((pid): pid is string => Boolean(pid));
+        await startRefresh(client, pids);
         state = await getSyncState(client);
+      } else {
+        state = claimed;
       }
 
-      const experiences = await fetchExperiences();
-      const expected = state.expected_count ?? experiences.length;
-      const cursor = state.cursor;
-
-      if (cursor >= expected || cursor >= experiences.length) {
-        await promoteStaging(client);
-        return {
-          action: 'promoted',
-          processed: 0,
-          imported: state.imported_count,
-          expected,
-          done: true,
-        };
-      }
-
-      const end = Math.min(cursor + batchSize, expected, experiences.length);
-      const slice = experiences.slice(cursor, end);
-      const parsed = await fetchAndParseBatch(slice, concurrency);
-
-      for (const row of parsed) {
-        await insertStagedTransfer(client, row);
-      }
-
-      const newCursor = end;
-      await advanceCursor(client, newCursor, parsed.length);
-      const importedTotal = state.imported_count + parsed.length;
-
-      if (newCursor >= expected || newCursor >= experiences.length) {
-        await promoteStaging(client);
-        return {
-          action: 'promoted',
-          processed: slice.length,
-          imported: importedTotal,
-          expected,
-          done: true,
-        };
-      }
-
-      return {
-        action: 'batch',
-        processed: slice.length,
-        imported: parsed.length,
-        cursor: newCursor,
-        expected,
-        done: false,
-      };
+      return await processSnapshotBatch(client, state, batchSize, concurrency);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       try {

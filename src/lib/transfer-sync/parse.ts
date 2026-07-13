@@ -14,24 +14,28 @@ export interface ParsedTransferCourse {
 export function parseExperienceDetail(
   detail: KualiExperienceDetail
 ): ParsedTransferCourse[] {
-  if (!detail.rulesAchievementCriteria) {
+  if (!detail.rulesAchievementCriteria || !detail.pid) {
     return [];
   }
 
   const courseLinkRegex =
     /<a href="#\/courses\/view\/[^"]*" target="_blank">([A-Z]+[0-9]+E?L?E?)<\/a>/g;
-  const rows: ParsedTransferCourse[] = [];
+  const byCourseNumber = new Map<string, ParsedTransferCourse>();
   let match: RegExpExecArray | null;
 
   while ((match = courseLinkRegex.exec(detail.rulesAchievementCriteria)) !== null) {
     const courseNumber = match[1];
+    if (byCourseNumber.has(courseNumber)) {
+      continue;
+    }
+
     const subjectPrefix = courseNumber.replace(/[0-9]+(ELE)?$/g, '');
 
-    rows.push({
+    byCourseNumber.set(courseNumber, {
       subjectPrefix,
       courseNumber,
       title: detail.title ?? null,
-      pid: detail.pid ?? null,
+      pid: detail.pid,
       eligibilityTimeframe: detail.eligibilityTimeframe ?? null,
       groupFilter2Name: detail.groupFilter2?.name || null,
       academicLevel: detail.academicLevel?.name || null,
@@ -39,5 +43,5 @@ export function parseExperienceDetail(
     });
   }
 
-  return rows;
+  return [...byCourseNumber.values()];
 }
