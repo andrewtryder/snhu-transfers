@@ -1,4 +1,5 @@
 import { Client } from 'pg';
+import { reportTransferSyncError } from '@/lib/monitoring/honeybadger';
 import { fetchExperienceDetail, fetchExperiences } from './fetch';
 import { parseExperienceDetail, type ParsedTransferCourse } from './parse';
 import {
@@ -243,8 +244,11 @@ export async function runTransferSync(
   const ignoreLease = options.ignoreLease ?? false;
 
   return withClient(async (client) => {
+    let syncContext: TransferSyncState | null = null;
+
     try {
       let state = await getSyncState(client);
+      syncContext = state;
       const now = new Date();
       const wasRunning = state.status === 'running';
 
@@ -277,13 +281,20 @@ export async function runTransferSync(
           .filter((pid): pid is string => Boolean(pid));
         await startRefresh(client, pids);
         state = await getSyncState(client);
+        syncContext = state;
       } else {
         state = claimed;
+        syncContext = state;
       }
 
       return await processSnapshotBatch(client, state, batchSize, concurrency);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      try {
+        await reportTransferSyncError(error, { state: syncContext });
+      } catch {
+        // Honeybadger failures must not escape into sync control flow.
+      }
       try {
         await setSyncError(client, message);
       } catch {

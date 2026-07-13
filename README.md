@@ -45,6 +45,7 @@ Optional course pages can link to that app for prerequisite details via `NEXT_PU
 - [Drizzle ORM](https://orm.drizzle.team/) for database queries
 - [Neon](https://neon.tech/) / PostgreSQL for transfer equivalency data
 - [Vercel](https://vercel.com/) for hosting, cron jobs, and analytics
+- [Honeybadger](https://www.honeybadger.io/) for error monitoring
 - [Lucide React](https://lucide.dev/) for icons
 
 ## Architecture Overview
@@ -102,13 +103,16 @@ Install dependencies:
 npm install
 ```
 
-Create a `.env` file:
+Create a `.env` file (see `.env.example`):
 
 ```bash
 POSTGRES_URL=postgresql://...
 CRON_SECRET=your-random-secret
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
+HONEYBADGER_API_KEY=
+NEXT_PUBLIC_HONEYBADGER_API_KEY=
+HONEYBADGER_TRANSFER_CHECKIN_URL=
 ```
 
 Initialize the database:
@@ -146,14 +150,41 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 This project is designed to deploy on Vercel.
 
-Set the following environment variables in Vercel:
+Set the following environment variables in Vercel **Production**:
 
 - `POSTGRES_URL`
 - `CRON_SECRET` (required — the cron route fails closed if unset)
 - `NEXT_PUBLIC_BASE_URL`
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
+- `HONEYBADGER_API_KEY` (server-side error reporting)
+- `NEXT_PUBLIC_HONEYBADGER_API_KEY` (optional — browser/error-boundary reporting; the app builds and runs when unset)
 
-The project includes a daily Vercel cron job at `/api/cron/transfer-sync`. A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately; when due, the worker starts a refresh and continues it on subsequent days until all batches finish. Transfer refresh is independent of the course catalog sync.
+The project includes a daily Vercel cron job at `/api/cron/transfer-sync` (`17 5 * * *`). A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately; when due, the worker starts a refresh and continues it on subsequent days until all batches finish. Transfer refresh is independent of the course catalog sync.
+
+## Error monitoring (Honeybadger)
+
+- **Server errors** are reported with `HONEYBADGER_API_KEY` (never expose this key to the browser or through `next.config` `env`).
+- **Browser / App Router error UI** reporting is optional via `NEXT_PUBLIC_HONEYBADGER_API_KEY`.
+- Caught transfer-sync failures (which would otherwise become `{ action: "error" }` results) notify Honeybadger once from the sync library with safe job context and tags `cron` / `transfer-sync`.
+- Source map uploading is intentionally disabled (`disableSourceMapUpload: true`).
+- Honeybadger skips reporting in development and test environments by default.
+- **Check-ins** (missing cron alerts) require Honeybadger Business. This project runs on the free plan, so check-ins are not configured. The optional `HONEYBADGER_TRANSFER_CHECKIN_URL` helper remains a no-op when unset.
+
+### Safely testing reporting
+
+Do not add a permanently public failure route. Prefer one of:
+
+1. From a machine with Production env loaded (never commit secrets):
+
+```bash
+npx tsx -e "
+import { reportServerError } from './src/lib/monitoring/honeybadger.ts';
+await reportServerError(new Error('Honeybadger test from snhu-transfers'));
+console.log('notified');
+"
+```
+
+2. Use Honeybadger’s project UI to send a test notice after keys are configured.
 
 ## License
 

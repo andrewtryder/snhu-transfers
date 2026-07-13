@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { Honeybadger } from "@honeybadger-io/react";
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
+import "../../honeybadger.browser.config.js";
 
 export default function Error({
   error,
@@ -13,6 +15,7 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error(error);
+    Honeybadger.notify(error);
   }, [error]);
 
   return (
