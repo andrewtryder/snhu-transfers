@@ -6,7 +6,7 @@ export default function Loading() {
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
 
-      <main className="mx-auto w-full max-w-[var(--spacing-container-max)] flex-1 animate-pulse px-4 py-6 md:px-8 md:py-8 pb-28">
+      <main className="mx-auto w-full max-w-[var(--spacing-container-max)] flex-1 animate-pulse px-4 py-6 md:px-8 md:py-8 pb-52 md:pb-32">
         <div className="overflow-hidden rounded-lg border border-surface-variant bg-surface-container-lowest">
           <div className="space-y-4 p-6">
             {[1, 2, 3, 4, 5].map((i) => (

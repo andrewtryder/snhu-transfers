@@ -70,7 +70,7 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
-      <main id="main-content" className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col gap-6 px-4 py-8 pb-28 md:px-8">
+      <main id="main-content" className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col gap-6 px-4 py-8 pb-52 md:pb-32 md:px-8">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <section className="rounded-lg border border-surface-variant bg-surface-container-low p-5">
           <h1 className="font-[family-name:var(--font-headline)] text-2xl font-semibold text-primary md:text-3xl">

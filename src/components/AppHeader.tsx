@@ -24,6 +24,9 @@ const tabBaseClass =
 const tabActiveClass = "bg-surface-container-lowest text-primary shadow-sm";
 const tabInactiveClass = "text-on-surface-variant hover:text-on-surface";
 
+const searchInputClassName =
+  "w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary";
+
 function ViewTabs({
   activeView,
   onViewChange,
@@ -74,7 +77,7 @@ function ViewTabs({
   );
 }
 
-function SearchInput({
+function ControlledSearchInput({
   searchTerm,
   onSearchChange,
 }: {
@@ -90,12 +93,30 @@ function SearchInput({
       <input
         type="text"
         aria-label="Search courses"
-        className="w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary"
+        className={searchInputClassName}
         placeholder="Search by course, title, or organization..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
       />
     </div>
+  );
+}
+
+function GlobalSearchForm() {
+  return (
+    <form action="/" method="get" role="search" className="relative w-full min-w-0">
+      <SearchIcon
+        className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-outline"
+        aria-hidden="true"
+      />
+      <input
+        type="search"
+        name="q"
+        aria-label="Search courses"
+        className={searchInputClassName}
+        placeholder="Search by course, title, or organization..."
+      />
+    </form>
   );
 }
 
@@ -107,7 +128,7 @@ export function AppHeader({
   showControls = false,
   currentPage = "home",
 }: AppHeaderProps) {
-  const hasControls = showControls && onSearchChange && onViewChange;
+  const hasControls = Boolean(showControls && onSearchChange && onViewChange);
 
   return (
     <header className="sticky top-0 z-20 border-b border-surface-variant bg-surface">
@@ -136,15 +157,17 @@ export function AppHeader({
           )}
         </div>
 
-        {hasControls && (
-          <div className="lg:col-start-2 lg:row-start-1">
-            <SearchInput searchTerm={searchTerm} onSearchChange={onSearchChange} />
-          </div>
-        )}
+        <div className="lg:col-start-2 lg:row-start-1">
+          {hasControls ? (
+            <ControlledSearchInput searchTerm={searchTerm} onSearchChange={onSearchChange!} />
+          ) : (
+            <GlobalSearchForm />
+          )}
+        </div>
 
         {hasControls && (
           <div className="lg:col-start-3 lg:row-start-1 lg:justify-self-end">
-            <ViewTabs activeView={activeView} onViewChange={onViewChange} />
+            <ViewTabs activeView={activeView} onViewChange={onViewChange!} />
           </div>
         )}
       </div>

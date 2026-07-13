@@ -24,7 +24,7 @@ export default function Error({
 
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 items-center justify-center px-4 py-10 md:px-8 pb-28"
+        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 items-center justify-center px-4 py-10 md:px-8 pb-52 md:pb-32"
       >
         <div
           role="alert"

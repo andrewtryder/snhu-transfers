@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import ClientPage from "./ClientPage";
 import { getAllTransferRows, getFacetSummaries } from "@/lib/seoQueries";
 
@@ -101,7 +102,9 @@ export default async function Page() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }} />
-      <ClientPage initialCoursesData={toCoursesData(rows)} seoFacets={facets} />
+      <Suspense fallback={null}>
+        <ClientPage initialCoursesData={toCoursesData(rows)} seoFacets={facets} />
+      </Suspense>
     </>
   );
 }

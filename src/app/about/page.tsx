@@ -25,7 +25,7 @@ export default function AboutPage() {
 
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10 md:px-8 md:py-16 pb-28"
+        className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10 md:px-8 md:py-16 pb-52 md:pb-32"
       >
         <article aria-labelledby="about-heading">
           <header className="mb-10">

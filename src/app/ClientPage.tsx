@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, KeyboardEvent, useDeferredValue } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { AppHeader, type ViewType } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -45,8 +46,10 @@ export default function ClientPage({
   initialCoursesData: CoursesData;
   seoFacets: SeoFacets;
 }) {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [activeView, setActiveView] = useState<ViewType>("subject");
 
@@ -124,7 +127,7 @@ export default function ClientPage({
 
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col gap-6 px-4 py-6 pb-28 md:px-8 md:py-8"
+        className="mx-auto flex w-full max-w-[var(--spacing-container-max)] flex-1 flex-col gap-6 px-4 py-6 pb-52 md:px-8 md:py-8 md:pb-32"
       >
         <section className="rounded-lg border border-surface-variant bg-surface-container-low p-5">
           <h1 className="font-[family-name:var(--font-headline)] text-2xl font-semibold text-primary md:text-3xl">

@@ -2,6 +2,10 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Page from './page';
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 jest.mock('../db', () => ({
   db: {
     select: jest.fn().mockReturnThis(),
