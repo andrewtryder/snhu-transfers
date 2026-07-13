@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "transfer:bootstrap": "tsx scripts/transfer-bootstrap.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

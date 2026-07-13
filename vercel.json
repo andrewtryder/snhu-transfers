@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/update-courses",
-      "schedule": "0 0 1 * *"
+      "path": "/api/cron/transfer-sync",
+      "schedule": "0 4 * * 0"
     }
   ]
 }

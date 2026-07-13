@@ -82,6 +82,18 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
           <p className="mt-4 text-xs text-on-surface-variant">
             <strong className="text-on-surface">Disclaimer:</strong> This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor.
           </p>
+          {process.env.NEXT_PUBLIC_COURSES_URL ? (
+            <p className="mt-4 text-sm">
+              <a
+                href={`${process.env.NEXT_PUBLIC_COURSES_URL}/course/${encodeURIComponent(normalizedCourse)}`}
+                className="text-secondary transition-colors hover:text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View prerequisites
+              </a>
+            </p>
+          ) : null}
         </section>
 
         <EquivalencyTable rows={rows} />

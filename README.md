@@ -24,13 +24,16 @@ This project is not affiliated with, endorsed by, or operated by Southern New Ha
 
 I also built [SNHU Course Prerequisites Tool](https://github.com/andrewtryder/snhu-courses), another tool for SNHU students that makes it easier to search courses and visualize prerequisite relationships while planning a degree path.
 
+Optional course pages can link to that app for prerequisite details via `NEXT_PUBLIC_COURSES_URL`. The transfer site does not require the courses app to be running, and sync does not call it over HTTP or join its tables for core pages.
+
 ## Features
 
 - Search SNHU transfer equivalencies by course code, title, or organization
 - Browse results by subject, provider organization, or academic level
 - View transfer titles, eligibility timeframes, and academic levels
 - Link to official SNHU transfer experience pages when available
-- Refresh transfer data from SNHU's public Kuali catalog API
+- Optional deep links to course prerequisite pages
+- Refresh transfer data from SNHU's public Kuali transfer-experience API
 - Include basic SEO support through metadata, `robots.txt`, and `sitemap.xml`
 
 ## Tech Stack
@@ -54,8 +57,9 @@ At a high level, the app is organized around a server-rendered data load from Po
 src/
   app/
     api/
-      update-courses/
-        route.ts
+      cron/
+        transfer-sync/
+          route.ts
     ClientPage.tsx
     layout.tsx
     page.tsx
@@ -66,20 +70,27 @@ src/
     index.ts
     schema.ts
 
+  lib/
+    transfer-sync/
+      index.ts
+      fetch.ts
+      parse.ts
+      persist.ts
+      promote.ts
+
 scripts/
-  populate.ts
-  setup-db.ts
-  test-update.ts
+  migrate.ts
+  transfer-bootstrap.ts
 ```
 
 ## How It Works
 
-1. The update route fetches public transfer experience data from SNHU's Kuali catalog API.
-2. Course mappings are parsed from the experience achievement criteria.
-3. Parsed transfer equivalencies are written to PostgreSQL using Drizzle ORM.
-4. The homepage loads transfer data from the database in a server component.
+1. Transfer sync fetches public transfer experience data from SNHU's Kuali API (experiences only — not the full course catalog).
+2. Course mappings are parsed from the experience achievement criteria using SNHU course codes (e.g. `CS499`) as the cross-project identifier.
+3. Rows are written to `transfer_courses_stage`, then atomically promoted into `transfer_courses`.
+4. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
 5. The client UI lets users search, group, and expand transfer equivalency results.
-6. After a successful update, the app revalidates the homepage so fresh data can be shown.
+6. After a successful promote, the cron route revalidates cached pages.
 
 ## Local Development
 
@@ -95,18 +106,19 @@ Create a `.env` file:
 POSTGRES_URL=postgresql://...
 CRON_SECRET=your-random-secret
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
 ```
 
 Initialize the database:
 
 ```bash
-npx tsx scripts/setup-db.ts
+npm run db:migrate
 ```
 
 Populate transfer course data:
 
 ```bash
-npx tsx scripts/populate.ts
+npm run transfer:bootstrap
 ```
 
 Start the development server:
@@ -125,6 +137,8 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 - `npm run lint` - Run ESLint
 - `npm test` - Run tests
 - `npm run test:watch` - Run tests in watch mode
+- `npm run db:migrate` - Create transfer tables and sync state (idempotent)
+- `npm run transfer:bootstrap` - Full local transfer sync into staging, then promote
 
 ## Deployment
 
@@ -133,10 +147,11 @@ This project is designed to deploy on Vercel.
 Set the following environment variables in Vercel:
 
 - `POSTGRES_URL`
-- `CRON_SECRET`
+- `CRON_SECRET` (required — the cron route fails closed if unset)
 - `NEXT_PUBLIC_BASE_URL`
+- `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 
-The project includes a Vercel cron job that refreshes transfer data monthly by calling `/api/update-courses`.
+The project includes a Vercel cron job that refreshes transfer data weekly by calling `/api/cron/transfer-sync`. Transfer refresh is independent of the course catalog sync.
 
 ## License
 
