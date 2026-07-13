@@ -12,19 +12,11 @@ jest.mock("@/lib/transfer-sync", () => ({
   runTransferSync: jest.fn(),
 }));
 
-jest.mock("@/lib/monitoring/check-in", () => ({
-  sendTransferSyncCheckIn: jest.fn(),
-}));
-
 import { revalidatePath } from "next/cache";
 import { runTransferSync } from "@/lib/transfer-sync";
-import { sendTransferSyncCheckIn } from "@/lib/monitoring/check-in";
 
 const mockedRunTransferSync = runTransferSync as jest.MockedFunction<
   typeof runTransferSync
->;
-const mockedSendCheckIn = sendTransferSyncCheckIn as jest.MockedFunction<
-  typeof sendTransferSyncCheckIn
 >;
 const mockedRevalidatePath = revalidatePath as jest.MockedFunction<
   typeof revalidatePath
@@ -46,7 +38,6 @@ describe("transfer-sync cron route", () => {
     jest.clearAllMocks();
     process.env.CRON_SECRET = "test-secret";
     process.env.POSTGRES_URL = "postgres://example";
-    mockedSendCheckIn.mockResolvedValue(undefined);
   });
 
   afterAll(() => {
@@ -62,7 +53,7 @@ describe("transfer-sync cron route", () => {
     }
   });
 
-  it("does not send a success check-in for action: error", async () => {
+  it("returns 500 for action: error without revalidating", async () => {
     mockedRunTransferSync.mockResolvedValue({
       action: "error",
       error: "boom",
@@ -70,11 +61,10 @@ describe("transfer-sync cron route", () => {
 
     const response = await GET(authorizedRequest());
     expect(response.status).toBe(500);
-    expect(mockedSendCheckIn).not.toHaveBeenCalled();
     expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("sends a success check-in for not_due when configured helper runs", async () => {
+  it("returns 200 for skipped not_due without revalidating", async () => {
     mockedRunTransferSync.mockResolvedValue({
       action: "skipped",
       reason: "not_due",
@@ -96,41 +86,37 @@ describe("transfer-sync cron route", () => {
 
     const response = await GET(authorizedRequest());
     expect(response.status).toBe(200);
-    expect(mockedSendCheckIn).toHaveBeenCalledTimes(1);
-    expect(mockedSendCheckIn.mock.calls[0][0].result).toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       action: "skipped",
       reason: "not_due",
     });
     expect(mockedRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("does not turn a successful cron result into an error when check-in fails", async () => {
+  it("revalidates paths after a successful promote", async () => {
     mockedRunTransferSync.mockResolvedValue({
-      action: "skipped",
-      reason: "lease_held",
+      action: "promoted",
+      processed: 10,
+      imported: 10,
+      expected: 10,
       state: {
         id: "transfer",
-        status: "running",
-        cursor: 10,
-        expected_count: 100,
-        imported_count: 5,
+        status: "idle",
+        cursor: 0,
+        expected_count: null,
+        imported_count: 0,
         started_at: null,
-        completed_at: null,
-        next_due_at: null,
-        lease_expires_at: new Date(),
+        completed_at: new Date(),
+        next_due_at: new Date("2099-01-01T00:00:00.000Z"),
+        lease_expires_at: null,
         last_error: null,
-        sync_id: "sync-1",
+        sync_id: null,
         failed_experience_count: 0,
       },
     });
-    mockedSendCheckIn.mockRejectedValue(new Error("check-in failed"));
 
     const response = await GET(authorizedRequest());
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      action: "skipped",
-      reason: "lease_held",
-    });
-    expect(mockedSendCheckIn).toHaveBeenCalledTimes(1);
+    expect(mockedRevalidatePath).toHaveBeenCalled();
   });
 });

@@ -112,7 +112,6 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
 HONEYBADGER_API_KEY=
 NEXT_PUBLIC_HONEYBADGER_API_KEY=
-HONEYBADGER_TRANSFER_CHECKIN_URL=
 ```
 
 Initialize the database:
@@ -168,7 +167,6 @@ The project includes a daily Vercel cron job at `/api/cron/transfer-sync` (`17 5
 - Caught transfer-sync failures (which would otherwise become `{ action: "error" }` results) notify Honeybadger once from the sync library with safe job context and tags `cron` / `transfer-sync`.
 - Source map uploading is intentionally disabled (`disableSourceMapUpload: true`).
 - Honeybadger skips reporting in development and test environments by default.
-- **Check-ins** (missing cron alerts) require Honeybadger Business. This project runs on the free plan, so check-ins are not configured. The optional `HONEYBADGER_TRANSFER_CHECKIN_URL` helper remains a no-op when unset.
 
 ### Safely testing reporting
 

@@ -1,5 +1,4 @@
 import { revalidatePath } from 'next/cache';
-import { sendTransferSyncCheckIn } from '@/lib/monitoring/check-in';
 import { runTransferSync } from '@/lib/transfer-sync';
 
 export const maxDuration = 60;
@@ -39,32 +38,10 @@ export async function GET(request: Request) {
     );
   }
 
-  const startedAt = Date.now();
   const result = await runTransferSync();
-  const durationMs = Date.now() - startedAt;
 
   if (result.action === 'error') {
     return Response.json(result, { status: 500 });
-  }
-
-  try {
-    await sendTransferSyncCheckIn({
-      durationMs,
-      result: {
-        action: result.action,
-        ...(result.action === 'skipped' ? { reason: result.reason } : {}),
-        ...(result.action === 'batch' || result.action === 'promoted'
-          ? {
-              processed: result.processed,
-              imported: result.imported,
-              expected: result.expected,
-            }
-          : {}),
-        ...(result.action === 'batch' ? { cursor: result.cursor } : {}),
-      },
-    });
-  } catch {
-    // Check-in is best-effort; never convert a successful sync into an HTTP error.
   }
 
   if (result.action === 'promoted') {

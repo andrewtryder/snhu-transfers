@@ -12,5 +12,4 @@ export const HONEYBADGER_FILTERS = [
   'database_url',
   'honeybadger_api_key',
   'next_public_honeybadger_api_key',
-  'honeybadger_transfer_checkin_url',
 ];
