@@ -17,6 +17,7 @@ export interface TransferSyncState {
   lease_expires_at: Date | null;
   last_error: string | null;
   sync_id: string | null;
+  failed_experience_count: number;
 }
 
 export interface TransferSyncItem {
@@ -45,6 +46,7 @@ function mapSyncStateRow(row: Record<string, unknown>): TransferSyncState {
     lease_expires_at: asDate(row.lease_expires_at),
     last_error: (row.last_error as string) ?? null,
     sync_id: (row.sync_id as string) ?? null,
+    failed_experience_count: Number(row.failed_experience_count ?? 0),
   };
 }
 
@@ -61,7 +63,8 @@ export async function getSyncState(client: Client): Promise<TransferSyncState> {
       next_due_at,
       lease_expires_at,
       last_error,
-      sync_id
+      sync_id,
+      failed_experience_count
     FROM transfer_sync_state
     WHERE id = $1`,
     [TRANSFER_SYNC_ID]
@@ -124,7 +127,8 @@ export async function startRefresh(client: Client, pids: string[]): Promise<void
       completed_at = NULL,
       lease_expires_at = NOW() + INTERVAL '5 minutes',
       last_error = NULL,
-      sync_id = $2::uuid
+      sync_id = $2::uuid,
+      failed_experience_count = 0
     WHERE id = $3`,
     [uniquePids.length, syncId, TRANSFER_SYNC_ID]
   );
@@ -188,7 +192,8 @@ export async function tryClaimLease(
           next_due_at,
           lease_expires_at,
           last_error,
-          sync_id`,
+          sync_id,
+          failed_experience_count`,
         [TRANSFER_SYNC_ID]
       )
     : await client.query(
@@ -210,7 +215,8 @@ export async function tryClaimLease(
           next_due_at,
           lease_expires_at,
           last_error,
-          sync_id`,
+          sync_id,
+          failed_experience_count`,
         [TRANSFER_SYNC_ID]
       );
 
@@ -238,7 +244,8 @@ export async function abortToIdle(client: Client, error: string): Promise<void> 
       status = 'idle',
       lease_expires_at = NULL,
       last_error = $1,
-      sync_id = NULL
+      sync_id = NULL,
+      failed_experience_count = 0
     WHERE id = $2`,
     [error, TRANSFER_SYNC_ID]
   );
@@ -309,7 +316,8 @@ export async function markCompleted(client: Client): Promise<void> {
       next_due_at = NOW() + INTERVAL '7 days',
       lease_expires_at = NULL,
       last_error = NULL,
-      sync_id = NULL
+      sync_id = NULL,
+      failed_experience_count = 0
     WHERE id = $1`,
     [TRANSFER_SYNC_ID]
   );

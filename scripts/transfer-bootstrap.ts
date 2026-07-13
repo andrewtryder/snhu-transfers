@@ -9,7 +9,14 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await bootstrapTransfer();
+  const allowLargeShrink = process.argv.includes('--allow-large-shrink');
+  if (allowLargeShrink) {
+    console.warn(
+      'allowLargeShrink enabled: promote may replace live data with a much smaller staging set'
+    );
+  }
+
+  const result = await bootstrapTransfer({ allowLargeShrink });
   console.log(
     `Transfer bootstrap finished: imported ${result.imported} rows from ${result.expected} experiences`
   );

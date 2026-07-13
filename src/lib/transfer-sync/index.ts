@@ -65,7 +65,10 @@ async function fetchAndParsePids(
 ): Promise<ParsedTransferCourse[]> {
   const nested = await mapWithConcurrency(pids, concurrency, async (pid) => {
     const detail = await fetchExperienceDetail(pid);
-    if (!detail) return [] as ParsedTransferCourse[];
+    if (!detail) {
+      throw new Error(`Failed to fetch experience detail for PID: ${pid}`);
+    }
+    // Successful detail with zero course mappings is valid → [].
     return parseExperienceDetail(detail);
   });
   return nested.flat();
@@ -87,7 +90,8 @@ async function processSnapshotBatch(
   client: Client,
   state: TransferSyncState,
   batchSize: number,
-  concurrency: number
+  concurrency: number,
+  options: { allowLargeShrink?: boolean } = {}
 ): Promise<TransferSyncResult> {
   if (!state.sync_id) {
     const message =
@@ -98,9 +102,10 @@ async function processSnapshotBatch(
 
   const expected = state.expected_count ?? 0;
   const cursor = state.cursor;
+  const promoteOptions = { allowLargeShrink: options.allowLargeShrink };
 
   if (cursor >= expected) {
-    await promoteStaging(client);
+    await promoteStaging(client, promoteOptions);
     return {
       action: 'promoted',
       processed: 0,
@@ -112,14 +117,9 @@ async function processSnapshotBatch(
 
   const items = await getSyncItems(client, state.sync_id, cursor, batchSize);
   if (items.length === 0) {
-    await promoteStaging(client);
-    return {
-      action: 'promoted',
-      processed: 0,
-      imported: state.imported_count,
-      expected,
-      done: true,
-    };
+    const message = `Snapshot corruption: no transfer_sync_items at cursor ${cursor} (expected ${expected})`;
+    await abortToIdle(client, message);
+    return { action: 'error', error: message };
   }
 
   const parsed = await fetchAndParsePids(
@@ -137,7 +137,7 @@ async function processSnapshotBatch(
   const importedTotal = state.imported_count + parsed.length;
 
   if (newCursor >= expected) {
-    await promoteStaging(client);
+    await promoteStaging(client, promoteOptions);
     return {
       action: 'promoted',
       processed: items.length,
@@ -161,10 +161,16 @@ async function processSnapshotBatch(
  * Full local bootstrap: snapshot experience PIDs, fill staging from that list, promote.
  */
 export async function bootstrapTransfer(
-  options: { concurrency?: number; batchSize?: number } = {}
+  options: {
+    concurrency?: number;
+    batchSize?: number;
+    allowLargeShrink?: boolean;
+  } = {}
 ): Promise<{ imported: number; expected: number }> {
   const concurrency = options.concurrency ?? BOOTSTRAP_CONCURRENCY;
   const batchSize = options.batchSize ?? CRON_BATCH_SIZE;
+  const allowLargeShrink = options.allowLargeShrink ?? false;
+  const batchOptions = { allowLargeShrink };
 
   return withClient(async (client) => {
     console.log('Fetching complete experience list...');
@@ -180,7 +186,13 @@ export async function bootstrapTransfer(
     const expected = state.expected_count ?? pids.length;
 
     while (state.cursor < expected) {
-      const result = await processSnapshotBatch(client, state, batchSize, concurrency);
+      const result = await processSnapshotBatch(
+        client,
+        state,
+        batchSize,
+        concurrency,
+        batchOptions
+      );
       if (result.action === 'error') {
         throw new Error(result.error);
       }
@@ -207,7 +219,7 @@ export async function bootstrapTransfer(
     console.log(
       `Validating and promoting (${state.imported_count} staged rows from ${state.expected_count} experiences)...`
     );
-    await promoteStaging(client);
+    await promoteStaging(client, batchOptions);
     console.log('Bootstrap complete');
 
     return {

@@ -6,8 +6,20 @@ export interface ValidationResult {
   errors: string[];
 }
 
-export async function validateStaging(client: Client): Promise<ValidationResult> {
+export interface PromoteOptions {
+  /** Allow promote when staging shrinks live data by more than 25%. Cron never sets this. */
+  allowLargeShrink?: boolean;
+}
+
+/** Refuse promote when staging drops more than 25% of live rows (unless overridden). */
+const MIN_STAGE_RATIO = 0.75;
+
+export async function validateStaging(
+  client: Client,
+  options: PromoteOptions = {}
+): Promise<ValidationResult> {
   const errors: string[] = [];
+  const allowLargeShrink = options.allowLargeShrink ?? false;
 
   const countResult = await client.query<{ count: number }>(
     'SELECT COUNT(*)::int AS count FROM transfer_courses_stage'
@@ -19,17 +31,45 @@ export async function validateStaging(client: Client): Promise<ValidationResult>
   }
 
   const state = await getSyncState(client);
+  const expected = state.expected_count;
+
+  if (expected === null) {
+    errors.push('transfer_sync_state.expected_count is missing');
+  } else if (state.cursor !== expected) {
+    errors.push(
+      `transfer_sync_state.cursor (${state.cursor}) !== expected_count (${expected})`
+    );
+  }
+
+  if (state.failed_experience_count !== 0) {
+    errors.push(
+      `transfer_sync_state.failed_experience_count (${state.failed_experience_count}) !== 0`
+    );
+  }
+
   if (!state.sync_id) {
     errors.push('transfer_sync_state.sync_id is missing');
-  } else {
+  } else if (expected !== null) {
     const snapshotCount = await countSyncItems(client, state.sync_id);
-    const expected = state.expected_count;
-    if (expected === null) {
-      errors.push('transfer_sync_state.expected_count is missing');
-    } else if (snapshotCount !== expected) {
+    if (snapshotCount !== expected) {
       errors.push(
         `transfer_sync_items count (${snapshotCount}) !== expected_count (${expected})`
       );
+    }
+  }
+
+  if (!allowLargeShrink && stageCount > 0) {
+    const liveResult = await client.query<{ count: number }>(
+      'SELECT COUNT(*)::int AS count FROM transfer_courses'
+    );
+    const liveCount = Number(liveResult.rows[0]?.count ?? 0);
+    if (liveCount > 0) {
+      const minStageCount = Math.ceil(liveCount * MIN_STAGE_RATIO);
+      if (stageCount < minStageCount) {
+        errors.push(
+          `staging row count (${stageCount}) is below 75% of live transfer_courses (${liveCount}); pass allowLargeShrink to override`
+        );
+      }
     }
   }
 
@@ -39,8 +79,11 @@ export async function validateStaging(client: Client): Promise<ValidationResult>
 /**
  * Atomically replace live transfer_courses from staging.
  */
-export async function promoteStaging(client: Client): Promise<void> {
-  const validation = await validateStaging(client);
+export async function promoteStaging(
+  client: Client,
+  options: PromoteOptions = {}
+): Promise<void> {
+  const validation = await validateStaging(client, options);
   if (!validation.ok) {
     const message = `Validation failed: ${validation.errors.join('; ')}`;
     await abortToIdle(client, message);

@@ -88,10 +88,11 @@ scripts/
 1. Transfer sync fetches public transfer experience data from SNHU's Kuali API (experiences only — not the full course catalog).
 2. On refresh start, experience PIDs are snapshotted into `transfer_sync_items`. Later cron ticks resume from that immutable list instead of re-downloading and re-slicing the live Kuali response.
 3. Course mappings are parsed from the experience achievement criteria using SNHU course codes (e.g. `CS499`) as the cross-project identifier.
-4. Rows are written to `transfer_courses_stage`, then atomically promoted into `transfer_courses`.
-5. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
-6. The client UI lets users search, group, and expand transfer equivalency results.
-7. After a successful promote, the cron route revalidates cached pages.
+4. Rows are written to `transfer_courses_stage`. A failed experience-detail fetch fails the batch without advancing the cursor (successful details with zero mappings are valid and contribute zero rows).
+5. When the snapshot cursor reaches `expected_count`, staging is validated and atomically promoted into `transfer_courses`. Promote requires `cursor === expected_count`, `failed_experience_count === 0`, matching snapshot size, nonempty staging, and that staging is at least 75% of the current live row count (bootstrap can pass `--allow-large-shrink` to override).
+6. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
+7. The client UI lets users search, group, and expand transfer equivalency results.
+8. After a successful promote, the cron route revalidates cached pages.
 
 ## Local Development
 
@@ -139,7 +140,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 - `npm test` - Run tests
 - `npm run test:watch` - Run tests in watch mode
 - `npm run db:migrate` - Create transfer tables and sync state (idempotent)
-- `npm run transfer:bootstrap` - Full local transfer sync into staging, then promote
+- `npm run transfer:bootstrap` - Full local transfer sync into staging, then promote (`--allow-large-shrink` overrides the 25% live shrink guard)
 
 ## Deployment
 

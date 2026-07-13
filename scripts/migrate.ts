@@ -84,13 +84,19 @@ async function migrate() {
         next_due_at TIMESTAMPTZ,
         lease_expires_at TIMESTAMPTZ,
         last_error TEXT,
-        sync_id UUID
+        sync_id UUID,
+        failed_experience_count INTEGER NOT NULL DEFAULT 0
       );
     `);
 
     await client.query(`
       ALTER TABLE transfer_sync_state
       ADD COLUMN IF NOT EXISTS sync_id UUID;
+    `);
+
+    await client.query(`
+      ALTER TABLE transfer_sync_state
+      ADD COLUMN IF NOT EXISTS failed_experience_count INTEGER NOT NULL DEFAULT 0;
     `);
 
     await client.query(`
