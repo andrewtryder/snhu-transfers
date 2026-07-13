@@ -153,7 +153,7 @@ Set the following environment variables in Vercel:
 - `NEXT_PUBLIC_BASE_URL`
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 
-The project includes a Vercel cron job that refreshes transfer data weekly by calling `/api/cron/transfer-sync`. Transfer refresh is independent of the course catalog sync.
+The project includes a daily Vercel cron job at `/api/cron/transfer-sync`. A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately; when due, the worker starts a refresh and continues it on subsequent days until all batches finish. Transfer refresh is independent of the course catalog sync.
 
 ## License
 
