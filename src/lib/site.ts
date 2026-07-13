@@ -1,27 +1,13 @@
-const localFallback = "http://localhost:3000";
+const productionSiteUrl = "https://snhu-transfers.vercel.app";
 
 function withProtocol(url: string): string {
   const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
   return normalized.replace(/\/$/, "");
 }
 
-export function getBaseUrl(): string {
-  const explicitBase = process.env.NEXT_PUBLIC_BASE_URL;
-  if (explicitBase) return withProtocol(explicitBase);
-
-  const explicitSite = process.env.NEXT_PUBLIC_SITE_URL;
-  if (explicitSite) return withProtocol(explicitSite);
-
-  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  if (productionHost) return withProtocol(productionHost);
-
-  const vercelHost = process.env.VERCEL_URL;
-  if (vercelHost) return withProtocol(vercelHost);
-
-  return localFallback;
-}
-
-export const siteUrl = getBaseUrl();
+export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ? withProtocol(process.env.NEXT_PUBLIC_SITE_URL)
+  : productionSiteUrl;
 
 export const lastUpdated = process.env.NEXT_PUBLIC_LAST_UPDATED ?? "";
 

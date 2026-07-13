@@ -7,6 +7,7 @@ import { EquivalencyTable } from "@/components/EquivalencyTable";
 import { canonicalPath, slugify } from "@/lib/slug";
 import { siteUrl } from "@/lib/site";
 import { getRelatedFacets, getRowsByLevel, resolveLevelBySlug } from "@/lib/seoQueries";
+import { summarizeLevelPage } from "@/lib/seoSummaries";
 
 type Params = { level: string };
 
@@ -76,8 +77,7 @@ export default async function LevelPage({ params }: { params: Promise<Params> })
             {levelValue} SNHU Transfer Equivalencies
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-on-surface-variant md:text-base">
-            Browse unofficial SNHU transfer equivalency records for the {levelValue.toLowerCase()} academic level. This page
-            includes mapped course numbers, organizations, and eligibility windows in server-rendered content.
+            {summarizeLevelPage(levelValue, rows)}
           </p>
           <p className="mt-4 text-xs text-on-surface-variant">
             <strong className="text-on-surface">Disclaimer:</strong> This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor.

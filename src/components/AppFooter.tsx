@@ -73,6 +73,9 @@ export function AppFooter() {
           >
             Source Code
           </a>
+          <a href="/browse" className="text-on-surface-variant transition-colors hover:text-primary">
+            Browse
+          </a>
           <a href="/about" className="text-on-surface-variant transition-colors hover:text-primary">
             About
           </a>

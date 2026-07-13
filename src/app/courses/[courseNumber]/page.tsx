@@ -7,6 +7,7 @@ import { EquivalencyTable } from "@/components/EquivalencyTable";
 import { canonicalPath, normalizeCourseNumber, slugify } from "@/lib/slug";
 import { siteUrl } from "@/lib/site";
 import { getRelatedFacets, getRowsByCourseNumber } from "@/lib/seoQueries";
+import { summarizeCoursePage } from "@/lib/seoSummaries";
 
 type Params = { courseNumber: string };
 
@@ -76,8 +77,7 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
             SNHU {normalizedCourse} Transfer Options
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-on-surface-variant md:text-base">
-            Review unofficial SNHU transfer equivalency entries mapped to {normalizedCourse}. Rows below show providers,
-            mapped titles, academic levels, and eligibility timeframe details.
+            {summarizeCoursePage(normalizedCourse, rows)}
           </p>
           <p className="mt-4 text-xs text-on-surface-variant">
             <strong className="text-on-surface">Disclaimer:</strong> This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor.

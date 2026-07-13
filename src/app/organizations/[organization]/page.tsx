@@ -7,6 +7,7 @@ import { EquivalencyTable } from "@/components/EquivalencyTable";
 import { canonicalPath, slugify } from "@/lib/slug";
 import { siteUrl } from "@/lib/site";
 import { getRelatedFacets, getRowsByOrganization, resolveOrganizationBySlug } from "@/lib/seoQueries";
+import { summarizeOrganizationPage } from "@/lib/seoSummaries";
 
 type Params = { organization: string };
 
@@ -76,8 +77,7 @@ export default async function OrganizationPage({ params }: { params: Promise<Par
             {organizationValue} SNHU Transfer Credits
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-on-surface-variant md:text-base">
-            Review unofficial SNHU transfer equivalencies associated with {organizationValue}. Listings below show mapped SNHU
-            course numbers, provider titles, academic levels, and eligibility timeframes in server-rendered HTML.
+            {summarizeOrganizationPage(organizationValue, rows)}
           </p>
           <p className="mt-4 text-xs text-on-surface-variant">
             <strong className="text-on-surface">Disclaimer:</strong> This is an unofficial compilation. Remember to double-check the official SNHU website for transfer eligibility, and always verify with your advisor.

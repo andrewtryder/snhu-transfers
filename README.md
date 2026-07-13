@@ -108,7 +108,7 @@ Create a `.env` file (see `.env.example`):
 ```bash
 POSTGRES_URL=postgresql://...
 CRON_SECRET=your-random-secret
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
 HONEYBADGER_API_KEY=
 NEXT_PUBLIC_HONEYBADGER_API_KEY=
@@ -153,7 +153,7 @@ Set the following environment variables in Vercel **Production**:
 
 - `POSTGRES_URL`
 - `CRON_SECRET` (required — the cron route fails closed if unset)
-- `NEXT_PUBLIC_BASE_URL`
+- `NEXT_PUBLIC_SITE_URL` (optional — defaults to `https://snhu-transfers.vercel.app`)
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 - `HONEYBADGER_API_KEY` (server-side error reporting)
 - `NEXT_PUBLIC_HONEYBADGER_API_KEY` (optional — browser/error-boundary reporting; the app builds and runs when unset)

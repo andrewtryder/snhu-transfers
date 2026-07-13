@@ -1,7 +1,8 @@
-import { asc, eq, isNotNull } from "drizzle-orm";
+import { asc, count, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { transferCourses } from "@/db/schema";
 import { normalizeCourseNumber, slugify } from "@/lib/slug";
+import { TRANSFER_SYNC_ID } from "@/lib/transfer-sync/persist";
 
 export type TransferRow = {
   subjectPrefix: string | null;
@@ -193,4 +194,133 @@ export function getRelatedFacets(rows: TransferRow[]) {
   const courses = Array.from(new Set(rows.map((r) => r.courseNumber).filter(Boolean) as string[])).sort();
 
   return { subjects, organizations, levels, courses };
+}
+
+export type DirectoryEntry = {
+  value: string;
+  count: number;
+  slug: string;
+};
+
+export type CourseDirectoryEntry = DirectoryEntry & {
+  subjectPrefix: string;
+};
+
+function toDirectoryEntries(
+  rows: Array<{ value: string | null; count: number }>
+): DirectoryEntry[] {
+  const map = new Map<string, number>();
+
+  for (const row of rows) {
+    const value = (row.value ?? "").trim();
+    if (!value) continue;
+    map.set(value, (map.get(value) ?? 0) + Number(row.count));
+  }
+
+  return Array.from(map.entries())
+    .map(([value, entryCount]) => ({ value, count: entryCount, slug: slugify(value) }))
+    .sort((a, b) => a.value.localeCompare(b.value));
+}
+
+export async function getSubjectDirectoryEntries(): Promise<DirectoryEntry[]> {
+  const rows = await db
+    .select({
+      value: transferCourses.subjectPrefix,
+      count: count(),
+    })
+    .from(transferCourses)
+    .where(isNotNull(transferCourses.subjectPrefix))
+    .groupBy(transferCourses.subjectPrefix);
+
+  return toDirectoryEntries(rows);
+}
+
+export async function getOrganizationDirectoryEntries(): Promise<DirectoryEntry[]> {
+  const rows = await db
+    .select({
+      value: transferCourses.groupFilter2Name,
+      count: count(),
+    })
+    .from(transferCourses)
+    .where(isNotNull(transferCourses.groupFilter2Name))
+    .groupBy(transferCourses.groupFilter2Name);
+
+  return toDirectoryEntries(rows);
+}
+
+export async function getLevelDirectoryEntries(): Promise<DirectoryEntry[]> {
+  const rows = await db
+    .select({
+      value: transferCourses.academicLevel,
+      count: count(),
+    })
+    .from(transferCourses)
+    .where(isNotNull(transferCourses.academicLevel))
+    .groupBy(transferCourses.academicLevel);
+
+  return toDirectoryEntries(rows);
+}
+
+export async function getCourseDirectoryEntries(): Promise<CourseDirectoryEntry[]> {
+  const rows = await db
+    .select({
+      courseNumber: transferCourses.courseNumber,
+      subjectPrefix: transferCourses.subjectPrefix,
+      count: count(),
+    })
+    .from(transferCourses)
+    .where(isNotNull(transferCourses.courseNumber))
+    .groupBy(transferCourses.courseNumber, transferCourses.subjectPrefix);
+
+  const map = new Map<string, CourseDirectoryEntry>();
+
+  for (const row of rows) {
+    const value = (row.courseNumber ?? "").trim();
+    if (!value) continue;
+
+    const subjectPrefix = (row.subjectPrefix ?? "").trim();
+    const key = `${subjectPrefix}\0${value}`;
+    const existing = map.get(key);
+    const entryCount = Number(row.count);
+
+    if (existing) {
+      existing.count += entryCount;
+    } else {
+      map.set(key, {
+        value,
+        subjectPrefix,
+        count: entryCount,
+        slug: slugify(value),
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      a.subjectPrefix.localeCompare(b.subjectPrefix) || a.value.localeCompare(b.value)
+  );
+}
+
+export async function getTransferLastModified(): Promise<Date | null> {
+  try {
+    const result = await db.execute(
+      sql`SELECT completed_at FROM transfer_sync_state WHERE id = ${TRANSFER_SYNC_ID}`
+    );
+
+    const rows = Array.isArray(result)
+      ? result
+      : ((result as { rows?: unknown[] }).rows ?? []);
+
+    if (rows.length === 0) return null;
+
+    const raw = (rows[0] as { completed_at?: unknown }).completed_at;
+    if (raw == null) return null;
+
+    const date = raw instanceof Date ? raw : new Date(String(raw));
+    if (Number.isNaN(date.getTime())) return null;
+
+    return date;
+  } catch {
+    return null;
+  }
 }
