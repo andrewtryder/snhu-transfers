@@ -45,27 +45,28 @@ export default async function CoursePage({ params }: { params: Promise<Params> }
 
   const related = getRelatedFacets(rows);
 
-  const jsonLd = [
-    {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      name: `SNHU ${normalizedCourse} Transfer Options`,
-      itemListElement: rows.slice(0, 50).map((row, index) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        name: row.title || `${normalizedCourse} Transfer Option`,
-        url: canonicalPath(`/courses/${slugify(normalizedCourse)}`, siteUrl),
-      })),
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
-        { "@type": "ListItem", position: 2, name: normalizedCourse },
-      ],
-    }
-  ];
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "ItemList",
+        name: `SNHU ${normalizedCourse} Transfer Options`,
+        itemListElement: rows.slice(0, 50).map((row, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: row.title || `${normalizedCourse} Transfer Option`,
+          url: canonicalPath(`/courses/${slugify(normalizedCourse)}`, siteUrl),
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+          { "@type": "ListItem", position: 2, name: normalizedCourse },
+        ],
+      },
+    ],
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
