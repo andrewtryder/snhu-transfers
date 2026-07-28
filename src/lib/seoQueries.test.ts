@@ -193,6 +193,14 @@ describe('distinct SQL loaders', () => {
   });
 });
 
+describe('cached loader errors', () => {
+  it('propagates database failures instead of caching an empty transfer dataset', async () => {
+    (db.orderBy as jest.Mock).mockRejectedValueOnce(new Error('Neon 402'));
+
+    await expect(getAllTransferRows()).rejects.toThrow('Neon 402');
+  });
+});
+
 // ── Slug generation ───────────────────────────────────────────────────────────
 
 describe('buildFacetSummaries slug generation', () => {
