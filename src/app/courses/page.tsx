@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
 import { canonicalPath } from "@/lib/slug";
@@ -20,7 +21,15 @@ export const metadata: Metadata = {
 };
 
 export default async function CoursesDirectoryPage() {
-  const entries = await getCourseDirectoryEntries();
+  await connection();
+  let entries: Awaited<ReturnType<typeof getCourseDirectoryEntries>> = [];
+  let dataUnavailable = false;
+  try {
+    entries = await getCourseDirectoryEntries();
+  } catch (error) {
+    console.error("Failed to load transfer course directory:", error);
+    dataUnavailable = true;
+  }
 
   const groups = new Map<string, typeof entries>();
   for (const entry of entries) {
@@ -49,7 +58,9 @@ export default async function CoursesDirectoryPage() {
         </section>
 
         {sortedGroups.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">No courses are available yet.</p>
+          <p className="text-sm text-on-surface-variant">
+            {dataUnavailable ? "Transfer courses are temporarily unavailable. Please try again shortly." : "No courses are available yet."}
+          </p>
         ) : (
           sortedGroups.map(([subjectPrefix, courses]) => (
             <section

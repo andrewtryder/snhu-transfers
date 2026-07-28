@@ -1,9 +1,14 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import Page from './page';
+import Page, { getHomepagePayload } from './page';
+import { getAllTransferRows } from '../lib/seoQueries';
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
+}));
+
+jest.mock('next/server', () => ({
+  connection: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Stub unstable_cache so the module loads without a real Next.js context.
@@ -64,4 +69,16 @@ describe('Page tests', () => {
         // GEO200 should not be visible anymore
         expect(screen.queryByText('GEO200')).not.toBeInTheDocument();
     });
+});
+
+describe('getHomepagePayload', () => {
+  it('returns an uncached empty fallback when transfer rows fail to load', async () => {
+    (getAllTransferRows as jest.Mock).mockRejectedValueOnce(new Error('Neon 402'));
+
+    await expect(getHomepagePayload()).resolves.toMatchObject({
+      rows: [],
+      dataUnavailable: true,
+      facets: { subjects: [], organizations: [], levels: [], courses: [] },
+    });
+  });
 });

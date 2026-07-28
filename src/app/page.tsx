@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import ClientPage from "./ClientPage";
 import { getAllTransferRows, buildFacetSummaries } from "@/lib/seoQueries";
@@ -72,21 +73,26 @@ function toCoursesData(rows: Awaited<ReturnType<typeof getAllTransferRows>>): Co
   return data;
 }
 
-async function getHomepagePayload() {
+export async function getHomepagePayload() {
   try {
     // Load transfer rows exactly once. Facets are derived from the same rows
     // without a second full-table database round-trip.
     const rows = await getAllTransferRows();
     const facets = buildFacetSummaries(rows, 20);
-    return { rows, facets };
+    return { rows, facets, dataUnavailable: false };
   } catch (error) {
     console.error("Failed to fetch homepage transfer data:", error);
-    throw error;
+    return {
+      rows: [],
+      facets: buildFacetSummaries([], 20),
+      dataUnavailable: true,
+    };
   }
 }
 
 export default async function Page() {
-  const { rows, facets } = await getHomepagePayload();
+  await connection();
+  const { rows, facets, dataUnavailable } = await getHomepagePayload();
 
   const webSiteJsonLd = {
     "@context": "https://schema.org",
@@ -104,6 +110,11 @@ export default async function Page() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }} />
+      {dataUnavailable ? (
+        <p className="mx-auto mt-4 w-full max-w-[var(--spacing-container-max)] px-4 text-sm text-on-surface-variant md:px-8">
+          Transfer data is temporarily unavailable. Please try again shortly.
+        </p>
+      ) : null}
       <Suspense fallback={null}>
         <ClientPage initialCoursesData={toCoursesData(rows)} seoFacets={facets} />
       </Suspense>

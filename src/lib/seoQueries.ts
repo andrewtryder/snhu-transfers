@@ -259,7 +259,6 @@ async function _dbGetRowsByLevel(level: string): Promise<TransferRow[]> {
 }
 
 async function _dbGetRowsByCourseNumber(courseNumber: string): Promise<TransferRow[]> {
-  const normalized = normalizeCourseNumber(courseNumber);
   return db
     .select({
       subjectPrefix: transferCourses.subjectPrefix,
@@ -272,7 +271,7 @@ async function _dbGetRowsByCourseNumber(courseNumber: string): Promise<TransferR
       coursePID: transferCourses.coursePID,
     })
     .from(transferCourses)
-    .where(eq(transferCourses.courseNumber, normalized))
+    .where(eq(transferCourses.courseNumber, courseNumber))
     .orderBy(asc(transferCourses.groupFilter2Name), asc(transferCourses.title));
 }
 
@@ -434,7 +433,7 @@ const _cachedRowsByLevel = unstable_cache(
  * uppercase before the query and the cache key.
  */
 const _cachedRowsByCourseNumber = unstable_cache(
-  (courseNumber: string) => _dbGetRowsByCourseNumber(normalizeCourseNumber(courseNumber)),
+  _dbGetRowsByCourseNumber,
   ["rows-by-course-number"],
   { tags: [CACHE_TAG], revalidate: CACHE_REVALIDATE }
 );
@@ -451,16 +450,24 @@ export const getOrganizationDirectoryEntries = cache(() => _cachedOrganizationDi
 export const getLevelDirectoryEntries = cache(() => _cachedLevelDirectoryEntries());
 export const getCourseDirectoryEntries = cache(() => _cachedCourseDirectoryEntries());
 export const getTransferLastModified = cache(() => _cachedTransferLastModified());
-export const getRowsBySubject = cache((subjectPrefix: string) =>
-  _cachedRowsBySubject(subjectPrefix.trim())
-);
-export const getRowsByOrganization = cache((organization: string) =>
-  _cachedRowsByOrganization(organization.trim())
-);
-export const getRowsByLevel = cache((level: string) => _cachedRowsByLevel(level.trim()));
-export const getRowsByCourseNumber = cache((courseNumber: string) =>
-  _cachedRowsByCourseNumber(normalizeCourseNumber(courseNumber))
-);
+const _getRowsBySubject = cache((subjectPrefix: string) => _cachedRowsBySubject(subjectPrefix));
+const _getRowsByOrganization = cache((organization: string) => _cachedRowsByOrganization(organization));
+const _getRowsByLevel = cache((level: string) => _cachedRowsByLevel(level));
+const _getRowsByCourseNumber = cache((courseNumber: string) => _cachedRowsByCourseNumber(courseNumber));
+
+// Normalize before both React and Next persistent cache keys are constructed.
+export function getRowsBySubject(subjectPrefix: string) {
+  return _getRowsBySubject(subjectPrefix.trim());
+}
+export function getRowsByOrganization(organization: string) {
+  return _getRowsByOrganization(organization.trim());
+}
+export function getRowsByLevel(level: string) {
+  return _getRowsByLevel(level.trim());
+}
+export function getRowsByCourseNumber(courseNumber: string) {
+  return _getRowsByCourseNumber(normalizeCourseNumber(courseNumber));
+}
 
 // ---------------------------------------------------------------------------
 // Pure helpers — no DB access
@@ -521,25 +528,34 @@ export function getRelatedFacets(rows: TransferRow[]) {
  * Resolve a subject slug to its canonical database value.
  * Uses a cached slug→value map to avoid a full distinct query per call.
  */
-export const resolveSubjectBySlug = cache(async (slug: string): Promise<string | null> => {
+const _resolveSubjectBySlug = cache(async (slug: string): Promise<string | null> => {
   const map = await _cachedSubjectSlugMap();
-  return map[slugify(slug)] ?? null;
+  return map[slug] ?? null;
 });
+export function resolveSubjectBySlug(slug: string) {
+  return _resolveSubjectBySlug(slugify(slug));
+}
 
 /**
  * Resolve an organization slug to its canonical database value.
  * Uses a cached slug→value map to avoid a full distinct query per call.
  */
-export const resolveOrganizationBySlug = cache(async (slug: string): Promise<string | null> => {
+const _resolveOrganizationBySlug = cache(async (slug: string): Promise<string | null> => {
   const map = await _cachedOrganizationSlugMap();
-  return map[slugify(slug)] ?? null;
+  return map[slug] ?? null;
 });
+export function resolveOrganizationBySlug(slug: string) {
+  return _resolveOrganizationBySlug(slugify(slug));
+}
 
 /**
  * Resolve a level slug to its canonical database value.
  * Uses a cached slug→value map to avoid a full distinct query per call.
  */
-export const resolveLevelBySlug = cache(async (slug: string): Promise<string | null> => {
+const _resolveLevelBySlug = cache(async (slug: string): Promise<string | null> => {
   const map = await _cachedLevelSlugMap();
-  return map[slugify(slug)] ?? null;
+  return map[slug] ?? null;
 });
+export function resolveLevelBySlug(slug: string) {
+  return _resolveLevelBySlug(slugify(slug));
+}

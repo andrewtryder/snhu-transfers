@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
 import { canonicalPath } from "@/lib/slug";
@@ -20,7 +21,15 @@ export const metadata: Metadata = {
 };
 
 export default async function LevelsDirectoryPage() {
-  const entries = await getLevelDirectoryEntries();
+  await connection();
+  let entries: Awaited<ReturnType<typeof getLevelDirectoryEntries>> = [];
+  let dataUnavailable = false;
+  try {
+    entries = await getLevelDirectoryEntries();
+  } catch (error) {
+    console.error("Failed to load transfer level directory:", error);
+    dataUnavailable = true;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -40,7 +49,9 @@ export default async function LevelsDirectoryPage() {
 
         <section className="rounded-lg border border-surface-variant bg-surface-container-low p-5">
           {entries.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">No academic levels are available yet.</p>
+            <p className="text-sm text-on-surface-variant">
+              {dataUnavailable ? "Transfer academic levels are temporarily unavailable. Please try again shortly." : "No academic levels are available yet."}
+            </p>
           ) : (
             <ul className="columns-1 gap-x-8 sm:columns-2 md:columns-3">
               {entries.map((entry) => (
