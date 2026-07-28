@@ -144,21 +144,36 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 - `npm run test:watch` - Run tests in watch mode
 - `npm run db:migrate` - Create transfer tables and sync state (idempotent)
 - `npm run transfer:bootstrap` - Full local transfer sync into staging, then promote (`--allow-large-shrink` overrides the 25% live shrink guard)
+- `npm run transfer:sync` - Run an incremental transfer refresh to completion. Pass `-- --ignore-lease` only to deliberately take over an expired/stuck lease, or `-- --allow-large-shrink` only after reviewing an intentional large data reduction.
 
 ## Deployment
 
-This project is designed to deploy on Vercel.
+The site can deploy on Vercel, but the preferred quota-conscious update model is a weekly CircleCI job or a trusted desktop machine. Those environments run the full sync to completion without consuming Vercel function time; Vercel cron remains an optional fallback.
 
-Set the following environment variables in Vercel **Production**:
+Set the following environment variables in the site deployment and in the trusted sync environment as applicable:
 
 - `POSTGRES_URL`
 - `CRON_SECRET` (required — the cron route fails closed if unset)
+- `REVALIDATE_SECRET` (required by the external cache-revalidation endpoint)
 - `NEXT_PUBLIC_SITE_URL` (optional — defaults to `https://snhu-transfers.vercel.app`)
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 - `HONEYBADGER_API_KEY` (server-side error reporting)
 - `NEXT_PUBLIC_HONEYBADGER_API_KEY` (optional — browser/error-boundary reporting; the app builds and runs when unset)
 
-The project includes a daily Vercel cron job at `/api/cron/transfer-sync` (`17 5 * * *`). A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately; when due, the worker starts a refresh and continues it on subsequent days until all batches finish. Transfer refresh is independent of the course catalog sync.
+### External weekly synchronization
+
+On a trusted machine or CircleCI, keep `POSTGRES_URL` and `REVALIDATE_SECRET` in its encrypted secret store. Do not print either value in CI logs. After installing dependencies, run:
+
+```bash
+npm run db:migrate
+npm run transfer:sync
+curl --fail --request POST "$SITE_URL/api/revalidate" \
+  --header "Authorization: Bearer $REVALIDATE_SECRET"
+```
+
+`transfer:sync` preserves the existing lease, staging validation, 25% shrink guard, and atomic promotion. Schedule it weekly (for example, early Sunday morning) and invoke the revalidation endpoint only after a successful promotion. `POST /api/revalidate` fails closed when `REVALIDATE_SECRET` is absent or the bearer token is invalid; it invalidates the `transfer-data` cache tag and the key directory/sitemap paths.
+
+The optional Vercel cron route remains configured at `/api/cron/transfer-sync` (`17 5 * * *`). A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately. To move updates entirely off Vercel, remove the cron entry from `vercel.json` (or disable it in the Vercel project settings) after the external schedule is verified. Transfer refresh is independent of the course catalog sync.
 
 ## Error monitoring (Honeybadger)
 

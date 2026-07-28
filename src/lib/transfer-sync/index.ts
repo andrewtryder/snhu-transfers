@@ -237,11 +237,17 @@ export async function bootstrapTransfer(
  * - else: skip
  */
 export async function runTransferSync(
-  options: { batchSize?: number; concurrency?: number; ignoreLease?: boolean } = {}
+  options: {
+    batchSize?: number;
+    concurrency?: number;
+    ignoreLease?: boolean;
+    allowLargeShrink?: boolean;
+  } = {}
 ): Promise<TransferSyncResult> {
   const batchSize = options.batchSize ?? CRON_BATCH_SIZE;
   const concurrency = options.concurrency ?? CRON_CONCURRENCY;
   const ignoreLease = options.ignoreLease ?? false;
+  const allowLargeShrink = options.allowLargeShrink ?? false;
 
   return withClient(async (client) => {
     let syncContext: TransferSyncState | null = null;
@@ -287,7 +293,9 @@ export async function runTransferSync(
         syncContext = state;
       }
 
-      return await processSnapshotBatch(client, state, batchSize, concurrency);
+      return await processSnapshotBatch(client, state, batchSize, concurrency, {
+        allowLargeShrink,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       try {

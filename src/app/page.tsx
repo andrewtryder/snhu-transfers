@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ClientPage from "./ClientPage";
-import { getAllTransferRows, getFacetSummaries } from "@/lib/seoQueries";
+import { getAllTransferRows, buildFacetSummaries } from "@/lib/seoQueries";
 
 type Course = {
   title: string | null;
@@ -74,8 +74,10 @@ function toCoursesData(rows: Awaited<ReturnType<typeof getAllTransferRows>>): Co
 
 async function getHomepagePayload() {
   try {
+    // Load transfer rows exactly once. Facets are derived from the same rows
+    // without a second full-table database round-trip.
     const rows = await getAllTransferRows();
-    const facets = await getFacetSummaries(20);
+    const facets = buildFacetSummaries(rows, 20);
     return { rows, facets };
   } catch (error) {
     console.error("Failed to fetch homepage transfer data:", error);

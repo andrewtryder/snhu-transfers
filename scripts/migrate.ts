@@ -115,7 +115,40 @@ async function migrate() {
       ON CONFLICT (id) DO NOTHING;
     `);
 
+    // ---------------------------------------------------------------------------
+    // Query indexes — support the app's common filter/sort patterns.
+    // TRUNCATE (used in promotion) preserves index definitions, so these indexes
+    // survive every staging-to-live promotion automatically.
+    // ---------------------------------------------------------------------------
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS transfer_courses_subject_idx
+      ON transfer_courses (subjectprefix);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS transfer_courses_course_number_idx
+      ON transfer_courses (coursenumber);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS transfer_courses_organization_idx
+      ON transfer_courses (groupfilter2name);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS transfer_courses_academic_level_idx
+      ON transfer_courses (academiclevel);
+    `);
+
+    // Composite index: supports ORDER BY subjectprefix, coursenumber used in getRowsBySubject
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS transfer_courses_subject_course_idx
+      ON transfer_courses (subjectprefix, coursenumber);
+    `);
+
     console.log('Migrations applied successfully');
+
   } catch (err) {
     console.error('Migration failed', err);
     process.exit(1);

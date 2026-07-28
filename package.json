@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "db:migrate": "tsx scripts/migrate.ts",
-    "transfer:bootstrap": "tsx scripts/transfer-bootstrap.ts"
+    "transfer:bootstrap": "tsx scripts/transfer-bootstrap.ts",
+    "transfer:sync": "tsx scripts/transfer-sync.ts"
   },
   "dependencies": {
     "@honeybadger-io/nextjs": "^5.10.10",

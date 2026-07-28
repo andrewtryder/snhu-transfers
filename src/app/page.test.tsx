@@ -6,25 +6,35 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-jest.mock('../db', () => ({
+// Stub unstable_cache so the module loads without a real Next.js context.
+jest.mock('next/cache', () => ({
+  unstable_cache: jest.fn(<T extends (...args: unknown[]) => unknown>(fn: T) => fn),
+  revalidateTag: jest.fn(),
+  revalidatePath: jest.fn(),
+}));
+
+jest.mock('@/db', () => ({
   db: {
     select: jest.fn().mockReturnThis(),
     from: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockResolvedValue([
-      {
-        id: 1,
-        subjectPrefix: 'GEO',
-        courseNumber: 'GEO200',
-        title: 'Human Geography',
-        pid: 'r1XWeIg9U',
-        eligibilityTimeframe: 'Ongoing',
-        groupFilter2Name: 'AP Exams',
-        academicLevel: 'Undergraduate',
-        coursePID: '5beef559ac5c642e00c11b58'
-      }
-    ])
-  }
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockResolvedValue([]),
+    execute: jest.fn().mockResolvedValue({ rows: [] }),
+  },
 }));
+
+jest.mock('../lib/seoQueries', () => {
+  const actual = jest.requireActual('../lib/seoQueries');
+  return {
+    ...actual,
+    // Return the mock rows directly (unstable_cache is already stubbed as passthrough).
+    getAllTransferRows: jest.fn().mockResolvedValue([{
+      subjectPrefix: 'GEO', courseNumber: 'GEO200', title: 'Human Geography',
+      pid: 'r1XWeIg9U', eligibilityTimeframe: 'Ongoing', groupFilter2Name: 'AP Exams',
+      academicLevel: 'Undergraduate', coursePID: '5beef559ac5c642e00c11b58',
+    }]),
+  };
+});
 
 describe('Page tests', () => {
     it('renders the page and interacts with the search and rows', async () => {
