@@ -108,11 +108,17 @@ Create a `.env` file (see `.env.example`):
 ```bash
 POSTGRES_URL=postgresql://...
 CRON_SECRET=your-random-secret
+REVALIDATE_SECRET=your-random-revalidation-secret
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
 HONEYBADGER_API_KEY=
 NEXT_PUBLIC_HONEYBADGER_API_KEY=
 ```
+
+This application uses a dedicated Neon project for transfer data; the prior shared
+database is not needed. The local migration and synchronization scripts explicitly
+load `.env`, where `POSTGRES_URL` should be the direct Neon connection. Do not put
+operator credentials such as `NEON_API_KEY` or `VERCEL_API_KEY` in Vercel or GitHub.
 
 Initialize the database:
 
@@ -152,13 +158,16 @@ The site can deploy on Vercel, but the preferred quota-conscious update model is
 
 Set the following environment variables in the site deployment and in the trusted sync environment as applicable:
 
-- `POSTGRES_URL`
+- `POSTGRES_URL` (the Vercel Production runtime uses the Neon integration-provided pooled connection; local migration, bootstrap, and external synchronization use a direct connection)
 - `CRON_SECRET` (required — the cron route fails closed if unset)
 - `REVALIDATE_SECRET` (required by the external cache-revalidation endpoint)
 - `NEXT_PUBLIC_SITE_URL` (optional — defaults to `https://snhu-transfers.vercel.app`)
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 - `HONEYBADGER_API_KEY` (server-side error reporting)
 - `NEXT_PUBLIC_HONEYBADGER_API_KEY` (optional — browser/error-boundary reporting; the app builds and runs when unset)
+
+Database credentials are scoped to Vercel Production only. Preview and Development
+deployments do not receive production database credentials.
 
 ### External weekly synchronization
 
