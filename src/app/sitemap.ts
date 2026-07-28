@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { connection } from "next/server";
 import { slugify } from "@/lib/slug";
 import { siteUrl } from "@/lib/site";
 import {
@@ -9,60 +10,39 @@ import {
   getTransferLastModified,
 } from "@/lib/seoQueries";
 
+export function getStaticSitemapRoutes(): MetadataRoute.Sitemap {
+  return [
+    { url: siteUrl, changeFrequency: "weekly", priority: 1 },
+    { url: `${siteUrl}/about`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${siteUrl}/browse`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/courses`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/subjects`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/organizations`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/levels`, changeFrequency: "weekly", priority: 0.7 },
+  ];
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const lastModified = await getTransferLastModified();
+  await connection();
+  const staticRoutes = getStaticSitemapRoutes();
 
-  const [subjects, organizations, levels, courses] = await Promise.all([
-    getDistinctSubjects(),
-    getDistinctOrganizations(),
-    getDistinctLevels(),
-    getDistinctCourseNumbers(),
-  ]);
+  try {
+    const [lastModified, subjects, organizations, levels, courses] = await Promise.all([
+      getTransferLastModified(),
+      getDistinctSubjects(),
+      getDistinctOrganizations(),
+      getDistinctLevels(),
+      getDistinctCourseNumbers(),
+    ]);
 
-  const withDataTimestamp = (
+    const withDataTimestamp = (
     entry: Omit<MetadataRoute.Sitemap[number], "lastModified">
   ): MetadataRoute.Sitemap[number] =>
     lastModified ? { ...entry, lastModified } : entry;
 
-  const urls: MetadataRoute.Sitemap = [
-    withDataTimestamp({
-      url: siteUrl,
-      changeFrequency: "weekly",
-      priority: 1,
-    }),
-    {
-      url: `${siteUrl}/about`,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    withDataTimestamp({
-      url: `${siteUrl}/browse`,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }),
-    withDataTimestamp({
-      url: `${siteUrl}/courses`,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }),
-    withDataTimestamp({
-      url: `${siteUrl}/subjects`,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }),
-    withDataTimestamp({
-      url: `${siteUrl}/organizations`,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    }),
-    withDataTimestamp({
-      url: `${siteUrl}/levels`,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    }),
-  ];
+    const urls = staticRoutes.map(withDataTimestamp);
 
-  subjects
+    subjects
     .filter(Boolean)
     .forEach((value) => {
       urls.push(
@@ -74,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     });
 
-  organizations
+    organizations
     .filter(Boolean)
     .forEach((value) => {
       urls.push(
@@ -86,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     });
 
-  levels
+    levels
     .filter(Boolean)
     .forEach((value) => {
       urls.push(
@@ -98,7 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     });
 
-  courses
+    courses
     .filter(Boolean)
     .forEach((value) => {
       urls.push(
@@ -110,6 +90,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     });
 
-  const deduped = Array.from(new Map(urls.map((entry) => [entry.url, entry])).values());
-  return deduped;
+    return Array.from(new Map(urls.map((entry) => [entry.url, entry])).values());
+  } catch (error) {
+    console.error("Failed to load transfer sitemap data:", error);
+    return staticRoutes;
+  }
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
 import { canonicalPath } from "@/lib/slug";
@@ -20,7 +21,15 @@ export const metadata: Metadata = {
 };
 
 export default async function SubjectsDirectoryPage() {
-  const entries = await getSubjectDirectoryEntries();
+  await connection();
+  let entries: Awaited<ReturnType<typeof getSubjectDirectoryEntries>> = [];
+  let dataUnavailable = false;
+  try {
+    entries = await getSubjectDirectoryEntries();
+  } catch (error) {
+    console.error("Failed to load transfer subject directory:", error);
+    dataUnavailable = true;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -40,7 +49,9 @@ export default async function SubjectsDirectoryPage() {
 
         <section className="rounded-lg border border-surface-variant bg-surface-container-low p-5">
           {entries.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">No subjects are available yet.</p>
+            <p className="text-sm text-on-surface-variant">
+              {dataUnavailable ? "Transfer subjects are temporarily unavailable. Please try again shortly." : "No subjects are available yet."}
+            </p>
           ) : (
             <ul className="columns-1 gap-x-8 sm:columns-2 md:columns-3">
               {entries.map((entry) => (

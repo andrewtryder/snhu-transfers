@@ -1,30 +1,45 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import Page from './page';
+import Page, { getHomepagePayload } from './page';
+import { getAllTransferRows } from '../lib/seoQueries';
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-jest.mock('../db', () => ({
+jest.mock('next/server', () => ({
+  connection: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Stub unstable_cache so the module loads without a real Next.js context.
+jest.mock('next/cache', () => ({
+  unstable_cache: jest.fn(<T extends (...args: unknown[]) => unknown>(fn: T) => fn),
+  revalidateTag: jest.fn(),
+  revalidatePath: jest.fn(),
+}));
+
+jest.mock('@/db', () => ({
   db: {
     select: jest.fn().mockReturnThis(),
     from: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockResolvedValue([
-      {
-        id: 1,
-        subjectPrefix: 'GEO',
-        courseNumber: 'GEO200',
-        title: 'Human Geography',
-        pid: 'r1XWeIg9U',
-        eligibilityTimeframe: 'Ongoing',
-        groupFilter2Name: 'AP Exams',
-        academicLevel: 'Undergraduate',
-        coursePID: '5beef559ac5c642e00c11b58'
-      }
-    ])
-  }
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockResolvedValue([]),
+    execute: jest.fn().mockResolvedValue({ rows: [] }),
+  },
 }));
+
+jest.mock('../lib/seoQueries', () => {
+  const actual = jest.requireActual('../lib/seoQueries');
+  return {
+    ...actual,
+    // Return the mock rows directly (unstable_cache is already stubbed as passthrough).
+    getAllTransferRows: jest.fn().mockResolvedValue([{
+      subjectPrefix: 'GEO', courseNumber: 'GEO200', title: 'Human Geography',
+      pid: 'r1XWeIg9U', eligibilityTimeframe: 'Ongoing', groupFilter2Name: 'AP Exams',
+      academicLevel: 'Undergraduate', coursePID: '5beef559ac5c642e00c11b58',
+    }]),
+  };
+});
 
 describe('Page tests', () => {
     it('renders the page and interacts with the search and rows', async () => {
@@ -54,4 +69,16 @@ describe('Page tests', () => {
         // GEO200 should not be visible anymore
         expect(screen.queryByText('GEO200')).not.toBeInTheDocument();
     });
+});
+
+describe('getHomepagePayload', () => {
+  it('returns an uncached empty fallback when transfer rows fail to load', async () => {
+    (getAllTransferRows as jest.Mock).mockRejectedValueOnce(new Error('Neon 402'));
+
+    await expect(getHomepagePayload()).resolves.toMatchObject({
+      rows: [],
+      dataUnavailable: true,
+      facets: { subjects: [], organizations: [], levels: [], courses: [] },
+    });
+  });
 });
