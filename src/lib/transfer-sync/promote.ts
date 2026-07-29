@@ -139,6 +139,8 @@ export async function promoteStaging(
       FROM transfer_courses_stage
     `);
 
+    await markCompleted(client, syncId);
+
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -146,7 +148,6 @@ export async function promoteStaging(
   }
 
   await enrichCoursePids(client);
-  await markCompleted(client, syncId);
 }
 
 /**
