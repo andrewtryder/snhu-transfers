@@ -1,0 +1,61 @@
+version: 2.1
+
+jobs:
+  sync-transfer-data:
+    docker:
+      - image: cimg/node:24.13
+    resource_class: small
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - npm-v1-{{ checksum "package-lock.json" }}
+            - npm-v1-
+
+      - run:
+          name: Install dependencies
+          command: npm ci
+
+      - save_cache:
+          key: npm-v1-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+
+      - run:
+          name: Apply database migrations
+          command: npm run db:migrate
+
+      - run:
+          name: Synchronize transfer data
+          command: |
+            set -euo pipefail
+            npm run transfer:sync | tee /tmp/transfer-sync.log
+
+      - run:
+          name: Revalidate production cache
+          command: |
+            set -euo pipefail
+
+            if grep -q '"action":"promoted"' /tmp/transfer-sync.log; then
+              curl \
+                --fail \
+                --silent \
+                --show-error \
+                --request POST \
+                --header "Authorization: Bearer ${REVALIDATE_SECRET}" \
+                "${SITE_URL}/api/revalidate"
+            else
+              echo "No transfer promotion occurred; skipping revalidation."
+            fi
+
+workflows:
+  scheduled-transfer-sync:
+    jobs:
+      - sync-transfer-data:
+          context:
+            - snhu-transfers-sync
+          filters:
+            branches:
+              only: master
