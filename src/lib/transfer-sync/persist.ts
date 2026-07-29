@@ -292,23 +292,30 @@ export async function insertStagedTransfer(
 
 export async function advanceCursor(
   client: Client,
+  syncId: string,
   newCursor: number,
   importedDelta: number
 ): Promise<void> {
-  await client.query(
+  const result = await client.query(
     `UPDATE transfer_sync_state
     SET
       cursor = $1,
       imported_count = imported_count + $2,
       lease_expires_at = NOW() + INTERVAL '5 minutes'
-    WHERE id = $3`,
-    [newCursor, importedDelta, TRANSFER_SYNC_ID]
+    WHERE id = $3
+      AND sync_id = $4::uuid
+      AND status = 'running'
+    RETURNING id`,
+    [newCursor, importedDelta, TRANSFER_SYNC_ID, syncId]
   );
+
+  if (result.rows.length !== 1) {
+    throw new Error('Transfer sync ownership lost while advancing cursor');
+  }
 }
 
-export async function markCompleted(client: Client): Promise<void> {
-  await clearSyncItems(client);
-  await client.query(
+export async function markCompleted(client: Client, syncId: string): Promise<void> {
+  const result = await client.query(
     `UPDATE transfer_sync_state
     SET
       status = 'idle',
@@ -318,7 +325,16 @@ export async function markCompleted(client: Client): Promise<void> {
       last_error = NULL,
       sync_id = NULL,
       failed_experience_count = 0
-    WHERE id = $1`,
-    [TRANSFER_SYNC_ID]
+    WHERE id = $1
+      AND sync_id = $2::uuid
+      AND status = 'running'
+    RETURNING id`,
+    [TRANSFER_SYNC_ID, syncId]
   );
+
+  if (result.rows.length !== 1) {
+    throw new Error('Transfer sync ownership lost while marking completion');
+  }
+
+  await client.query('DELETE FROM transfer_sync_items WHERE sync_id = $1::uuid', [syncId]);
 }
