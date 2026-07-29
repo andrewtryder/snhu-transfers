@@ -16,6 +16,7 @@ const MIN_STAGE_RATIO = 0.75;
 
 export async function validateStaging(
   client: Client,
+  syncId: string,
   options: PromoteOptions = {}
 ): Promise<ValidationResult> {
   const errors: string[] = [];
@@ -32,6 +33,10 @@ export async function validateStaging(
 
   const state = await getSyncState(client);
   const expected = state.expected_count;
+
+  if (state.sync_id !== syncId || state.status !== 'running') {
+    errors.push('transfer sync ownership was lost before staging validation');
+  }
 
   if (expected === null) {
     errors.push('transfer_sync_state.expected_count is missing');
@@ -81,17 +86,34 @@ export async function validateStaging(
  */
 export async function promoteStaging(
   client: Client,
+  syncId: string,
   options: PromoteOptions = {}
 ): Promise<void> {
-  const validation = await validateStaging(client, options);
+  const validation = await validateStaging(client, syncId, options);
   if (!validation.ok) {
     const message = `Validation failed: ${validation.errors.join('; ')}`;
+    if (validation.errors.includes('transfer sync ownership was lost before staging validation')) {
+      throw new Error(message);
+    }
     await abortToIdle(client, message);
     throw new Error(message);
   }
 
   try {
     await client.query('BEGIN');
+
+    const ownership = await client.query(
+      `SELECT id
+       FROM transfer_sync_state
+       WHERE id = $1
+         AND sync_id = $2::uuid
+         AND status = 'running'
+       FOR UPDATE`,
+      ['transfer', syncId]
+    );
+    if (ownership.rows.length !== 1) {
+      throw new Error('Transfer sync ownership lost before promotion');
+    }
 
     await client.query('TRUNCATE transfer_courses');
     await client.query(`
@@ -117,6 +139,8 @@ export async function promoteStaging(
       FROM transfer_courses_stage
     `);
 
+    await markCompleted(client, syncId);
+
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -124,7 +148,6 @@ export async function promoteStaging(
   }
 
   await enrichCoursePids(client);
-  await markCompleted(client);
 }
 
 /**

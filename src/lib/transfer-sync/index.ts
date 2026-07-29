@@ -104,9 +104,10 @@ async function processSnapshotBatch(
   const expected = state.expected_count ?? 0;
   const cursor = state.cursor;
   const promoteOptions = { allowLargeShrink: options.allowLargeShrink };
+  const syncId = state.sync_id;
 
   if (cursor >= expected) {
-    await promoteStaging(client, promoteOptions);
+    await promoteStaging(client, syncId, promoteOptions);
     return {
       action: 'promoted',
       processed: 0,
@@ -134,11 +135,11 @@ async function processSnapshotBatch(
 
   const lastOrdinal = items[items.length - 1].ordinal;
   const newCursor = lastOrdinal + 1;
-  await advanceCursor(client, newCursor, parsed.length);
+  await advanceCursor(client, syncId, newCursor, parsed.length);
   const importedTotal = state.imported_count + parsed.length;
 
   if (newCursor >= expected) {
-    await promoteStaging(client, promoteOptions);
+    await promoteStaging(client, syncId, promoteOptions);
     return {
       action: 'promoted',
       processed: items.length,
@@ -220,7 +221,10 @@ export async function bootstrapTransfer(
     console.log(
       `Validating and promoting (${state.imported_count} staged rows from ${state.expected_count} experiences)...`
     );
-    await promoteStaging(client, batchOptions);
+    if (!state.sync_id) {
+      throw new Error('Transfer sync ownership lost before bootstrap promotion');
+    }
+    await promoteStaging(client, state.sync_id, batchOptions);
     console.log('Bootstrap complete');
 
     return {
