@@ -52,6 +52,12 @@ jobs:
 
 workflows:
   scheduled-transfer-sync:
+    triggers:
+      - schedule:
+          cron: "17 5 * * 0"
+          filters:
+            branches:
+              only: master
     jobs:
       - sync-transfer-data:
           context:
