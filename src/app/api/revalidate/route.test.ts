@@ -6,13 +6,11 @@ import { POST } from './route';
 
 jest.mock('next/cache', () => ({
   revalidateTag: jest.fn(),
-  revalidatePath: jest.fn(),
 }));
 
-import { revalidateTag, revalidatePath } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 
 const mockedRevalidateTag = revalidateTag as jest.MockedFunction<typeof revalidateTag>;
-const mockedRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalidatePath>;
 
 function makeRequest(authHeader?: string): Request {
   return new Request('http://localhost/api/revalidate', {
@@ -62,32 +60,21 @@ describe('POST /api/revalidate', () => {
     expect(mockedRevalidateTag).not.toHaveBeenCalled();
   });
 
-  it('revalidates the transfer-data tag on a valid request', async () => {
+  it('revalidates the transfer-data tag on a valid request with max profile', async () => {
     const response = await POST(makeRequest('Bearer test-revalidate-secret'));
     expect(response.status).toBe(200);
     expect(mockedRevalidateTag).toHaveBeenCalledWith('transfer-data', 'max');
   });
 
-  it('calls revalidatePath for key paths on a valid request', async () => {
-    await POST(makeRequest('Bearer test-revalidate-secret'));
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/', 'layout');
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/subjects', 'layout');
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/organizations', 'layout');
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/levels', 'layout');
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/courses', 'layout');
-    expect(mockedRevalidatePath).toHaveBeenCalledWith('/sitemap.xml', 'layout');
-  });
-
-  it('returns structured JSON with revalidated=true on success', async () => {
+  it('returns structured JSON with revalidated=true on success without paths', async () => {
     const response = await POST(makeRequest('Bearer test-revalidate-secret'));
     const body = await response.json();
-    expect(body).toMatchObject({
+    expect(body).toEqual({
       revalidated: true,
       tag: 'transfer-data',
-      paths: expect.any(Array),
       timestamp: expect.any(String),
     });
-    expect(Array.isArray(body.paths)).toBe(true);
+    expect(body.paths).toBeUndefined();
   });
 
   it('never exposes secrets in the response body', async () => {

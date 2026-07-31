@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { runTransferSync } from '@/lib/transfer-sync';
 
 export const maxDuration = 60;
@@ -10,20 +10,6 @@ function isAuthorized(request: Request): boolean {
   }
   const auth = request.headers.get('authorization');
   return auth === `Bearer ${secret}`;
-}
-
-function revalidateTransferPaths() {
-  try {
-    revalidatePath('/', 'layout');
-    revalidatePath('/about');
-    revalidatePath('/subjects');
-    revalidatePath('/organizations');
-    revalidatePath('/levels');
-    revalidatePath('/courses');
-    revalidatePath('/sitemap.xml');
-  } catch {
-    // revalidatePath only works inside a Next.js request context
-  }
 }
 
 export async function GET(request: Request) {
@@ -45,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   if (result.action === 'promoted') {
-    revalidateTransferPaths();
+    revalidateTag('transfer-data', 'max');
   }
 
   return Response.json(result);
