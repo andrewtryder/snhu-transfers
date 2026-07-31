@@ -93,7 +93,7 @@ scripts/
 5. When the snapshot cursor reaches `expected_count`, staging is validated and atomically promoted into `transfer_courses`. Promote requires `cursor === expected_count`, `failed_experience_count === 0`, matching snapshot size, nonempty staging, and that staging is at least 75% of the current live row count (bootstrap can pass `--allow-large-shrink` to override).
 6. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
 7. The client UI lets users search, group, and expand transfer equivalency results.
-8. After a successful promote, the cron route revalidates cached pages.
+8. After a successful promote, the cron route invalidates the `transfer-data` cache tag.
 
 ## Local Development
 
@@ -180,7 +180,7 @@ curl --fail --request POST "$SITE_URL/api/revalidate" \
   --header "Authorization: Bearer $REVALIDATE_SECRET"
 ```
 
-`transfer:sync` preserves the existing lease, staging validation, 25% shrink guard, and atomic promotion. Schedule it weekly (for example, early Sunday morning) and invoke the revalidation endpoint only after a successful promotion. `POST /api/revalidate` fails closed when `REVALIDATE_SECRET` is absent or the bearer token is invalid; it invalidates the `transfer-data` cache tag and the key directory/sitemap paths.
+`transfer:sync` preserves the existing lease, staging validation, 25% shrink guard, and atomic promotion. Schedule it weekly (for example, early Sunday morning) and invoke the revalidation endpoint only after a successful promotion. `POST /api/revalidate` fails closed when `REVALIDATE_SECRET` is absent or the bearer token is invalid; it invalidates the `transfer-data` cache tag.
 
 The optional Vercel cron route remains configured at `/api/cron/transfer-sync` (`17 5 * * *`). A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately. To move updates entirely off Vercel, remove the cron entry from `vercel.json` (or disable it in the Vercel project settings) after the external schedule is verified. Transfer refresh is independent of the course catalog sync.
 

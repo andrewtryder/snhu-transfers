@@ -5,21 +5,21 @@
 import { GET } from "./route";
 
 jest.mock("next/cache", () => ({
-  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
 }));
 
 jest.mock("@/lib/transfer-sync", () => ({
   runTransferSync: jest.fn(),
 }));
 
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { runTransferSync } from "@/lib/transfer-sync";
 
 const mockedRunTransferSync = runTransferSync as jest.MockedFunction<
   typeof runTransferSync
 >;
-const mockedRevalidatePath = revalidatePath as jest.MockedFunction<
-  typeof revalidatePath
+const mockedRevalidateTag = revalidateTag as jest.MockedFunction<
+  typeof revalidateTag
 >;
 
 function authorizedRequest(): Request {
@@ -53,6 +53,20 @@ describe("transfer-sync cron route", () => {
     }
   });
 
+  it("returns 401 when CRON_SECRET is missing or wrong", async () => {
+    delete process.env.CRON_SECRET;
+    const response = await GET(authorizedRequest());
+    expect(response.status).toBe(401);
+    expect(mockedRevalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when POSTGRES_URL is missing", async () => {
+    delete process.env.POSTGRES_URL;
+    const response = await GET(authorizedRequest());
+    expect(response.status).toBe(500);
+    expect(mockedRevalidateTag).not.toHaveBeenCalled();
+  });
+
   it("returns 500 for action: error without revalidating", async () => {
     mockedRunTransferSync.mockResolvedValue({
       action: "error",
@@ -61,7 +75,7 @@ describe("transfer-sync cron route", () => {
 
     const response = await GET(authorizedRequest());
     expect(response.status).toBe(500);
-    expect(mockedRevalidatePath).not.toHaveBeenCalled();
+    expect(mockedRevalidateTag).not.toHaveBeenCalled();
   });
 
   it("returns 200 for skipped not_due without revalidating", async () => {
@@ -90,10 +104,10 @@ describe("transfer-sync cron route", () => {
       action: "skipped",
       reason: "not_due",
     });
-    expect(mockedRevalidatePath).not.toHaveBeenCalled();
+    expect(mockedRevalidateTag).not.toHaveBeenCalled();
   });
 
-  it("revalidates paths after a successful promote", async () => {
+  it("revalidates transfer-data tag after a successful promote", async () => {
     mockedRunTransferSync.mockResolvedValue({
       action: "promoted",
       processed: 10,
@@ -117,6 +131,6 @@ describe("transfer-sync cron route", () => {
 
     const response = await GET(authorizedRequest());
     expect(response.status).toBe(200);
-    expect(mockedRevalidatePath).toHaveBeenCalled();
+    expect(mockedRevalidateTag).toHaveBeenCalledWith("transfer-data", "max");
   });
 });
