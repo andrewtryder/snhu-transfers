@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "dataLastUpdatedAt": "2026-08-02T12:00:00.000Z",
+  "requestedCourseCount": 3,
+  "matchedCourseCount": 2,
+  "courses": [
+    {
+      "courseCode": "CS110",
+      "displayCourseCode": "CS 110",
+      "hasTransferEquivalencies": true,
+      "equivalencyCount": 8,
+      "providerCount": 4,
+      "providers": ["Sophia Learning", "Study.com"],
+      "courseUrl": "https://snhu-transfers.vercel.app/courses/cs110"
+    },
+    {
+      "courseCode": "CS210",
+      "displayCourseCode": "CS 210",
+      "hasTransferEquivalencies": true,
+      "equivalencyCount": 3,
+      "providerCount": 2,
+      "providers": ["Study.com"],
+      "courseUrl": "https://snhu-transfers.vercel.app/courses/cs210"
+    },
+    {
+      "courseCode": "MAT140",
+      "displayCourseCode": "MAT 140",
+      "hasTransferEquivalencies": false,
+      "equivalencyCount": 0,
+      "providerCount": 0,
+      "providers": [],
+      "courseUrl": "https://snhu-transfers.vercel.app/courses/mat140"
+    }
+  ]
+}

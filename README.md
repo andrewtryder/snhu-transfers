@@ -34,7 +34,23 @@ Optional course pages can link to that app for prerequisite details via `NEXT_PU
 - Link to official SNHU transfer experience pages when available
 - Optional deep links to course prerequisite pages
 - Refresh transfer data from SNHU's public Kuali transfer-experience API
+- Public read-only transfer-coverage API for bounded course-code batches
 - Include basic SEO support through metadata, `robots.txt`, and `sitemap.xml`
+
+## Transfer Coverage API
+
+Unofficial public endpoint for checking live transfer-equivalency coverage for a
+bounded list of SNHU course codes. Full contract: [docs/transfer-coverage-api.md](docs/transfer-coverage-api.md).
+
+```bash
+curl "https://snhu-transfers.vercel.app/api/v1/transfer-coverage?courses=CS110,CS210,MAT140"
+```
+
+- Maximum 100 unique course codes per request
+- Returns explicit unmatched-course objects (not omissions)
+- `dataLastUpdatedAt` comes from the last successful transfer sync
+- Treat HTTP 503 as unavailable data, not zero coverage
+- Not an official SNHU API; listings do not guarantee acceptance
 
 ## Tech Stack
 
