@@ -116,6 +116,9 @@ describe("GET /api/v1/transfer-coverage", () => {
     expect(response.headers.get("Cache-Control")).toBe(
       "public, s-maxage=300, stale-while-revalidate=3600"
     );
+    expect(response.headers.get("CDN-Cache-Control")).toBe(
+      "public, s-maxage=300, stale-while-revalidate=3600"
+    );
     expect(response.headers.get("Last-Modified")).toBe(
       new Date("2026-08-02T12:00:00.000Z").toUTCString()
     );

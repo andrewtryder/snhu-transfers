@@ -80,11 +80,14 @@ Successful responses include:
 
 ```http
 Cache-Control: public, s-maxage=300, stale-while-revalidate=3600
+CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=3600
 ```
 
 `Last-Modified` is set when `dataLastUpdatedAt` is present.
 
-Server-side query results are tagged with `transfer-data`. After a successful transfer sync, `POST /api/revalidate` invalidates that tag so subsequent requests refresh from PostgreSQL. Error responses use `Cache-Control: no-store`.
+On Vercel, the CDN may strip `s-maxage` / `stale-while-revalidate` from the browser-visible `Cache-Control` header while still honoring them at the edge via `CDN-Cache-Control`.
+
+Server-side query results are tagged with `transfer-data` and revalidate every 300 seconds. After a successful transfer sync, `POST /api/revalidate` invalidates that tag so subsequent requests refresh from PostgreSQL. Error responses use `Cache-Control: no-store`.
 
 ## Schema-version policy
 

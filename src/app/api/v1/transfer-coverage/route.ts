@@ -10,7 +10,10 @@
 import { parseCoursesQuery } from "@/lib/courseCode";
 import { getTransferCoverageResponse } from "@/lib/transferCoverage";
 
+/** Shared by browsers/proxies; Vercel may strip s-maxage from the client-visible value. */
 const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=3600";
+/** Explicit CDN directive so Vercel edge caching remains bounded after sync. */
+const CDN_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=3600";
 
 type ErrorBody = {
   error: {
@@ -66,6 +69,7 @@ export async function GET(request: Request) {
 
     const headers = new Headers({
       "Cache-Control": CACHE_CONTROL,
+      "CDN-Cache-Control": CDN_CACHE_CONTROL,
       "Content-Type": "application/json",
     });
 
