@@ -1,3 +1,5 @@
+import { normalizeTransferCourseCode } from "@/lib/courseCode";
+
 export function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -6,8 +8,9 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Canonical transfer course code (uppercase, no spaces/hyphens). */
 export function normalizeCourseNumber(value: string): string {
-  return value.trim().toUpperCase();
+  return normalizeTransferCourseCode(value);
 }
 
 export function canonicalPath(pathname: string, baseUrl: string): string {
