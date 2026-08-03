@@ -116,6 +116,7 @@ export async function startRefresh(client: Client, pids: string[]): Promise<void
     );
   }
 
+  // Preserve completed_at (last successful promote) until markCompleted() updates it.
   await client.query(
     `UPDATE transfer_sync_state
     SET
@@ -124,7 +125,6 @@ export async function startRefresh(client: Client, pids: string[]): Promise<void
       expected_count = $1,
       imported_count = 0,
       started_at = NOW(),
-      completed_at = NULL,
       lease_expires_at = NOW() + INTERVAL '5 minutes',
       last_error = NULL,
       sync_id = $2::uuid,

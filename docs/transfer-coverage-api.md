@@ -45,7 +45,7 @@ Normalization rules: trim whitespace, uppercase, remove spaces and hyphens, dedu
       "displayCourseCode": "CS 110",
       "hasTransferEquivalencies": true,
       "equivalencyCount": 8,
-      "providerCount": 4,
+      "providerCount": 2,
       "providers": ["Sophia Learning", "Study.com"],
       "courseUrl": "https://snhu-transfers.vercel.app/courses/cs110"
     }
@@ -60,7 +60,8 @@ Unmatched requested courses are returned explicitly with `hasTransferEquivalenci
 - **`schemaVersion`**: Currently `1`. Consumers should reject incompatible future versions.
 - **`dataLastUpdatedAt`**: `transfer_sync_state.completed_at` for the last successfully promoted synchronization. May be `null` if no successful sync timestamp exists. A null timestamp does **not** mean every course lacks equivalencies.
 - **`equivalencyCount`**: Distinct transfer experiences for the course, counted by unique `pid` when available.
-- **`providers`**: Unique nonempty provider names (`groupfilter2name`), sorted alphabetically.
+- **`providers`**: Unique nonempty provider names (`groupfilter2name`), sorted alphabetically (full list; not truncated).
+- **`providerCount`**: Always equal to `providers.length`.
 - **`courseUrl`**: Canonical public course page on snhu-transfers.
 
 ## Error codes

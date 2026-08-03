@@ -9,7 +9,7 @@
       "displayCourseCode": "CS 110",
       "hasTransferEquivalencies": true,
       "equivalencyCount": 8,
-      "providerCount": 4,
+      "providerCount": 2,
       "providers": ["Sophia Learning", "Study.com"],
       "courseUrl": "https://snhu-transfers.vercel.app/courses/cs110"
     },
@@ -18,7 +18,7 @@
       "displayCourseCode": "CS 210",
       "hasTransferEquivalencies": true,
       "equivalencyCount": 3,
-      "providerCount": 2,
+      "providerCount": 1,
       "providers": ["Study.com"],
       "courseUrl": "https://snhu-transfers.vercel.app/courses/cs210"
     },

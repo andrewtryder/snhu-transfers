@@ -14,6 +14,8 @@ import { getTransferCoverageResponse } from "@/lib/transferCoverage";
 const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=3600";
 /** Explicit CDN directive so Vercel edge caching remains bounded after sync. */
 const CDN_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=3600";
+/** Reject oversized query strings before parse/DB work (abuse / cache-key sprawl). */
+const MAX_COURSES_QUERY_CHARS = 2_000;
 
 type ErrorBody = {
   error: {
@@ -34,7 +36,18 @@ function jsonError(status: number, body: ErrorBody, cacheControl = "no-store") {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const parsed = parseCoursesQuery(searchParams.get("courses"));
+  const coursesParam = searchParams.get("courses");
+
+  if (coursesParam != null && coursesParam.length > MAX_COURSES_QUERY_CHARS) {
+    return jsonError(400, {
+      error: {
+        code: "INVALID_COURSE_CODE",
+        message: "The courses query parameter is too long.",
+      },
+    });
+  }
+
+  const parsed = parseCoursesQuery(coursesParam);
 
   if (!parsed.ok) {
     if (parsed.error === "MISSING_COURSES") {
@@ -82,7 +95,6 @@ export async function GET(request: Request) {
     console.error("[transfer-coverage] Transfer data unavailable", {
       requestedCourseCount: parsed.courseCodes.length,
       errorName: error instanceof Error ? error.name : "unknown",
-      errorMessage: error instanceof Error ? error.message.slice(0, 200) : "unknown",
     });
 
     return jsonError(503, {

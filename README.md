@@ -60,7 +60,7 @@ curl "https://snhu-transfers.vercel.app/api/v1/transfer-coverage?courses=CS110,C
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Drizzle ORM](https://orm.drizzle.team/) for database queries
 - [Neon](https://neon.tech/) / PostgreSQL for transfer equivalency data
-- [Vercel](https://vercel.com/) for hosting, cron jobs, and analytics
+- [Vercel](https://vercel.com/) for hosting and analytics
 - [Honeybadger](https://www.honeybadger.io/) for error monitoring
 - [Lucide React](https://lucide.dev/) for icons
 
@@ -74,8 +74,10 @@ At a high level, the app is organized around a server-rendered data load from Po
 src/
   app/
     api/
-      cron/
-        transfer-sync/
+      revalidate/
+        route.ts
+      v1/
+        transfer-coverage/
           route.ts
     ClientPage.tsx
     layout.tsx
@@ -103,13 +105,13 @@ scripts/
 ## How It Works
 
 1. Transfer sync fetches public transfer experience data from SNHU's Kuali API (experiences only — not the full course catalog).
-2. On refresh start, experience PIDs are snapshotted into `transfer_sync_items`. Later cron ticks resume from that immutable list instead of re-downloading and re-slicing the live Kuali response.
+2. On refresh start, experience PIDs are snapshotted into `transfer_sync_items`. Later sync resumes from that immutable list instead of re-downloading and re-slicing the live Kuali response. The previous successful `completed_at` timestamp is preserved until promote finishes.
 3. Course mappings are parsed from the experience achievement criteria using SNHU course codes (e.g. `CS499`) as the cross-project identifier.
 4. Rows are written to `transfer_courses_stage`. A failed experience-detail fetch fails the batch without advancing the cursor (successful details with zero mappings are valid and contribute zero rows).
 5. When the snapshot cursor reaches `expected_count`, staging is validated and atomically promoted into `transfer_courses`. Promote requires `cursor === expected_count`, `failed_experience_count === 0`, matching snapshot size, nonempty staging, and that staging is at least 75% of the current live row count (bootstrap can pass `--allow-large-shrink` to override).
 6. The homepage and landing pages load from `transfer_courses` only (no catalog join required).
 7. The client UI lets users search, group, and expand transfer equivalency results.
-8. After a successful promote, the cron route invalidates the `transfer-data` cache tag.
+8. After a successful promote, the external sync environment calls `POST /api/revalidate` to invalidate the `transfer-data` cache tag.
 
 ## Local Development
 
@@ -123,7 +125,6 @@ Create a `.env` file (see `.env.example`):
 
 ```bash
 POSTGRES_URL=postgresql://...
-CRON_SECRET=your-random-secret
 REVALIDATE_SECRET=your-random-revalidation-secret
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
@@ -170,12 +171,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 ## Deployment
 
-The site can deploy on Vercel, but the preferred quota-conscious update model is a weekly CircleCI job or a trusted desktop machine. Those environments run the full sync to completion without consuming Vercel function time; Vercel cron remains an optional fallback.
+The site can deploy on Vercel, but the preferred quota-conscious update model is a weekly CircleCI job (or a trusted desktop machine). Those environments run the full sync to completion without consuming Vercel function time.
 
 Set the following environment variables in the site deployment and in the trusted sync environment as applicable:
 
 - `POSTGRES_URL` (the Vercel Production runtime uses the Neon integration-provided pooled connection; local migration, bootstrap, and external synchronization use a direct connection)
-- `CRON_SECRET` (required — the cron route fails closed if unset)
 - `REVALIDATE_SECRET` (required by the external cache-revalidation endpoint)
 - `NEXT_PUBLIC_SITE_URL` (optional — defaults to `https://snhu-transfers.vercel.app`)
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
@@ -196,9 +196,9 @@ curl --fail --request POST "$SITE_URL/api/revalidate" \
   --header "Authorization: Bearer $REVALIDATE_SECRET"
 ```
 
-`transfer:sync` preserves the existing lease, staging validation, 25% shrink guard, and atomic promotion. Schedule it weekly (for example, early Sunday morning) and invoke the revalidation endpoint only after a successful promotion. `POST /api/revalidate` fails closed when `REVALIDATE_SECRET` is absent or the bearer token is invalid; it invalidates the `transfer-data` cache tag.
+`transfer:sync` preserves the existing lease, staging validation, 25% shrink guard, and atomic promotion. Schedule it weekly in CircleCI with pipeline parameter `run_transfer_sync=true` on `master` (default `false` so ordinary pushes do not sync). Invoke the revalidation endpoint only after a successful promotion. `POST /api/revalidate` fails closed when `REVALIDATE_SECRET` is absent or the bearer token is invalid; it invalidates the `transfer-data` cache tag. Transfer refresh is independent of the course catalog sync.
 
-The optional Vercel cron route remains configured at `/api/cron/transfer-sync` (`17 5 * * *`). A successful promote sets `next_due_at` seven days later, so most daily ticks return immediately. To move updates entirely off Vercel, remove the cron entry from `vercel.json` (or disable it in the Vercel project settings) after the external schedule is verified. Transfer refresh is independent of the course catalog sync.
+Also configure a Vercel Firewall rate limit for `GET /api/v1/transfer-coverage` (dashboard; not in-repo).
 
 ## Error monitoring (Honeybadger)
 
