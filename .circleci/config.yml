@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  run_transfer_sync:
+    type: boolean
+    default: false
+
 jobs:
   sync-transfer-data:
     docker:
@@ -52,10 +57,11 @@ jobs:
 
 workflows:
   scheduled-transfer-sync:
+    when:
+      and:
+        - << pipeline.parameters.run_transfer_sync >>
+        - equal: [master, << pipeline.git.branch >>]
     jobs:
       - sync-transfer-data:
           context:
             - snhu-transfers-sync
-          filters:
-            branches:
-              only: master
