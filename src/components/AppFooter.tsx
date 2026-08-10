@@ -36,11 +36,13 @@ export function AppFooter() {
     if (resolvedLastUpdated) return;
 
     let isMounted = true;
-    fetchLastPublishedDate().then((date) => {
-      if (isMounted && date) {
-        setResolvedLastUpdated(date);
-      }
-    });
+    fetchLastPublishedDate()
+      .then((date) => {
+        if (isMounted && date) {
+          setResolvedLastUpdated(date);
+        }
+      })
+      .catch(() => null);
 
     return () => {
       isMounted = false;
