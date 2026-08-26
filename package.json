@@ -16,8 +16,8 @@
   "dependencies": {
     "@honeybadger-io/nextjs": "^5.11.0",
     "@honeybadger-io/react": "^6.1.30",
-    "@neondatabase/serverless": "^1.1.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/functions": "^3.9.5",
     "@vercel/speed-insights": "^2.0.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

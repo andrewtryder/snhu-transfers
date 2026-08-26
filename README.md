@@ -59,7 +59,7 @@ curl "https://snhu-transfers.vercel.app/api/v1/transfer-coverage?courses=CS110,C
 - [TypeScript](https://www.typescriptlang.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Drizzle ORM](https://orm.drizzle.team/) for database queries
-- [Neon](https://neon.tech/) / PostgreSQL for transfer equivalency data
+- [PostgreSQL](https://www.postgresql.org/) for transfer equivalency data (Drizzle + `pg`)
 - [Vercel](https://vercel.com/) for hosting and analytics
 - [Honeybadger](https://www.honeybadger.io/) for error monitoring
 - [Lucide React](https://lucide.dev/) for icons
@@ -87,6 +87,9 @@ src/
 
   db/
     index.ts
+    pool.ts
+    ssl.ts
+    client.ts
     schema.ts
 
   lib/
@@ -121,10 +124,12 @@ Install dependencies:
 npm install
 ```
 
-Create a `.env` file (see `.env.example`):
+Create a `.env` file (see `.env.example`). For local Aiven development, you can keep
+provider-specific values in a Git-ignored `.env.aiven.local` and set:
 
 ```bash
 POSTGRES_URL=postgresql://...
+POSTGRES_CA_CERT=.aiven/ca.pem
 REVALIDATE_SECRET=your-random-revalidation-secret
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_COURSES_URL=https://snhu-courses.vercel.app
@@ -132,10 +137,14 @@ HONEYBADGER_API_KEY=
 NEXT_PUBLIC_HONEYBADGER_API_KEY=
 ```
 
-This application uses a dedicated Neon project for transfer data; the prior shared
-database is not needed. The local migration and synchronization scripts explicitly
-load `.env`, where `POSTGRES_URL` should be the direct Neon connection. Do not put
-operator credentials such as `NEON_API_KEY` or `VERCEL_API_KEY` in Vercel or GitHub.
+The runtime uses a small shared `pg` pool (`max: 1`) with Vercel
+`attachDatabasePool()` for lifecycle cleanup. Migration, bootstrap, and sync scripts
+use direct `pg.Client` connections with the same verified TLS configuration via
+`POSTGRES_CA_CERT` (filesystem path locally, inline PEM on Vercel).
+
+Optional `coursePID` enrichment during promotion looks up catalog PIDs from a same-database
+`catalog_course_lookup` view when available. On isolated Aiven databases this step is
+skipped with a controlled warning and does not block promotion.
 
 Initialize the database:
 
@@ -175,15 +184,21 @@ The site can deploy on Vercel, but the preferred quota-conscious update model is
 
 Set the following environment variables in the site deployment and in the trusted sync environment as applicable:
 
-- `POSTGRES_URL` (the Vercel Production runtime uses the Neon integration-provided pooled connection; local migration, bootstrap, and external synchronization use a direct connection)
+- `POSTGRES_URL` (required PostgreSQL connection URL for runtime queries, migration, bootstrap, and sync)
+- `POSTGRES_CA_CERT` (optional verified TLS CA — local path such as `.aiven/ca.pem` or inline PEM on Vercel)
 - `REVALIDATE_SECRET` (required by the external cache-revalidation endpoint)
 - `NEXT_PUBLIC_SITE_URL` (optional — defaults to `https://snhu-transfers.vercel.app`)
 - `NEXT_PUBLIC_COURSES_URL` (optional — enables "View prerequisites" links)
 - `HONEYBADGER_API_KEY` (server-side error reporting)
 - `NEXT_PUBLIC_HONEYBADGER_API_KEY` (optional — browser/error-boundary reporting; the app builds and runs when unset)
 
-Database credentials are scoped to Vercel Production only. Preview and Development
-deployments do not receive production database credentials.
+### Database configuration & environment isolation
+
+The database client intentionally fails fast if `POSTGRES_URL` is missing at query time. For Vercel Preview deployments to access transfer equivalency data and directory pages, `POSTGRES_URL` must be configured in Vercel project settings for the **Preview** environment as well as **Production**.
+
+- **Fix via Vercel configuration**: Missing database connectivity in Preview must be resolved via Vercel environment variable settings, not through code fallbacks or mock data.
+- **Preferred Preview isolation**: Configure branch-scoped Preview `POSTGRES_URL` values when validating against non-production databases.
+
 
 ### External weekly synchronization
 
