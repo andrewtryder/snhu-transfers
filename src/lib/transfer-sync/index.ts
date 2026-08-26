@@ -1,4 +1,5 @@
-import { Client } from 'pg';
+import type { Client } from 'pg';
+import { createPgClient } from '@/db/client';
 import { reportTransferSyncError } from '@/lib/monitoring/honeybadger';
 import { fetchExperienceDetail, fetchExperiences } from './fetch';
 import { parseExperienceDetail, type ParsedTransferCourse } from './parse';
@@ -76,9 +77,12 @@ async function fetchAndParsePids(
 }
 
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const client = new Client({
-    connectionString: process.env.POSTGRES_URL,
-  });
+  const connectionString = process.env.POSTGRES_URL;
+  if (!connectionString) {
+    throw new Error('POSTGRES_URL is required');
+  }
+
+  const client = createPgClient(connectionString);
   await client.connect();
   try {
     return await fn(client);

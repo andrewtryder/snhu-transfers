@@ -1,4 +1,4 @@
-import { Client } from 'pg';
+import { createPgClient } from '../src/db/client';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env' });
@@ -9,9 +9,7 @@ async function migrate() {
     process.exit(1);
   }
 
-  const client = new Client({
-    connectionString: process.env.POSTGRES_URL,
-  });
+  const client = createPgClient(process.env.POSTGRES_URL);
 
   try {
     await client.connect();
