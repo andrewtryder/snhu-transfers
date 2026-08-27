@@ -7,6 +7,8 @@ import {
   BookOpenIcon,
   GraduationCapIcon,
 } from "lucide-react";
+import { SNHUToolsNav } from "@/components/SNHUToolsNav";
+import { CURRENT_TOOL_ID } from "@/lib/snhuTools";
 
 export type ViewType = "subject" | "organization" | "level";
 
@@ -25,7 +27,10 @@ const tabActiveClass = "bg-surface-container-lowest text-primary shadow-sm";
 const tabInactiveClass = "text-on-surface-variant hover:text-on-surface";
 
 const searchInputClassName =
-  "w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary";
+  "w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface";
+
+const brandClassName =
+  "inline-flex shrink-0 items-baseline gap-2 justify-self-start rounded-lg border border-surface-variant bg-surface-container-low px-3 py-2 no-underline transition-colors hover:border-primary hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
 
 function ViewTabs({
   activeView,
@@ -136,14 +141,14 @@ export function AppHeader({
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="inline-flex shrink-0 items-baseline gap-2 justify-self-start rounded-lg border border-surface-variant bg-surface-container-low px-3 py-2 no-underline transition-colors hover:border-primary hover:bg-surface-container"
-            aria-label="SNHU Transfer Equivalency List home"
+            className={brandClassName}
+            aria-label="SNHU Transfer Equivalencies home"
           >
             <span className="font-[family-name:var(--font-headline)] text-lg font-bold leading-none text-primary">
               SNHU
             </span>
             <span className="font-[family-name:var(--font-headline)] text-sm font-semibold leading-none tracking-wide text-on-surface">
-              Transfer Equivalency List
+              Transfer Equivalencies
             </span>
           </Link>
 
@@ -165,11 +170,10 @@ export function AppHeader({
           )}
         </div>
 
-        {hasControls && (
-          <div className="lg:col-start-3 lg:row-start-1 lg:justify-self-end">
-            <ViewTabs activeView={activeView} onViewChange={onViewChange!} />
-          </div>
-        )}
+        <div className="flex items-center justify-end gap-2 lg:col-start-3 lg:row-start-1 lg:justify-self-end">
+          {hasControls && <ViewTabs activeView={activeView} onViewChange={onViewChange!} />}
+          <SNHUToolsNav currentToolId={CURRENT_TOOL_ID} />
+        </div>
       </div>
     </header>
   );
