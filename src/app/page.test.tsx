@@ -48,7 +48,7 @@ describe('Page tests', () => {
         render(ServerComponent);
 
         // Check if header branding is present
-        expect(screen.getByLabelText('SNHU Transfer Equivalency List home')).toBeInTheDocument();
+        expect(screen.getByLabelText('SNHU Transfer Equivalencies home')).toBeInTheDocument();
 
         // Wait for course to appear (since it's loaded from our mock)
         await waitFor(() => {
