@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { formatLastUpdated, lastUpdated } from "@/lib/site";
-import { SNHUToolsFooterLinks } from "@/components/SNHUToolsFooterLinks";
-import { CURRENT_TOOL_ID, GITHUB_REPO_URL } from "@/lib/snhuTools";
+import { GITHUB_REPO_URL } from "@/lib/snhuTools";
 
 const REPO_OWNER = "andrewtryder";
 const REPO_NAME = "snhu-transfers";
+
+const linkClassName =
+  "text-on-surface-variant transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-low rounded-sm";
 
 async function fetchLastPublishedDate(): Promise<string | null> {
   try {
@@ -69,32 +71,23 @@ export function AppFooter() {
           </p>
           <nav
             aria-label="Footer navigation"
-            className="flex flex-col items-center gap-3 md:items-end"
+            className="flex flex-wrap justify-center gap-4 text-xs font-medium tracking-wide md:justify-end"
           >
-            <div className="flex flex-wrap justify-center gap-4 text-xs font-medium tracking-wide md:justify-end">
-              <a
-                href="/browse"
-                className="text-on-surface-variant transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-low rounded-sm"
-              >
-                Browse
-              </a>
-              <a
-                href="/about"
-                className="text-on-surface-variant transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-low rounded-sm"
-              >
-                About
-              </a>
-              <a
-                href={GITHUB_REPO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-on-surface-variant transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-low rounded-sm"
-              >
-                Source Code
-                <span className="sr-only"> (opens in a new tab)</span>
-              </a>
-            </div>
-            <SNHUToolsFooterLinks currentToolId={CURRENT_TOOL_ID} />
+            <a href="/browse" className={linkClassName}>
+              Browse
+            </a>
+            <a href="/about" className={linkClassName}>
+              About
+            </a>
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClassName}
+            >
+              Source Code
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
           </nav>
         </div>
       </div>
