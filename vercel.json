@@ -1,3 +1,77 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://snhu-tools.vercel.app/transfers",
+      "permanent": true
+    },
+    {
+      "source": "/about",
+      "destination": "https://snhu-tools.vercel.app/about",
+      "permanent": true
+    },
+    {
+      "source": "/browse",
+      "destination": "https://snhu-tools.vercel.app/transfers/browse",
+      "permanent": true
+    },
+    {
+      "source": "/browse/:path*",
+      "destination": "https://snhu-tools.vercel.app/transfers/browse/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/courses",
+      "destination": "https://snhu-tools.vercel.app/transfers/courses",
+      "permanent": true
+    },
+    {
+      "source": "/courses/:courseNumber",
+      "destination": "https://snhu-tools.vercel.app/transfers/courses/:courseNumber",
+      "permanent": true
+    },
+    {
+      "source": "/courses/:courseNumber/:path*",
+      "destination": "https://snhu-tools.vercel.app/transfers/courses/:courseNumber/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/subjects",
+      "destination": "https://snhu-tools.vercel.app/transfers/subjects",
+      "permanent": true
+    },
+    {
+      "source": "/subjects/:subject",
+      "destination": "https://snhu-tools.vercel.app/transfers/subjects/:subject",
+      "permanent": true
+    },
+    {
+      "source": "/organizations",
+      "destination": "https://snhu-tools.vercel.app/transfers/organizations",
+      "permanent": true
+    },
+    {
+      "source": "/organizations/:organization",
+      "destination": "https://snhu-tools.vercel.app/transfers/organizations/:organization",
+      "permanent": true
+    },
+    {
+      "source": "/levels",
+      "destination": "https://snhu-tools.vercel.app/transfers/levels",
+      "permanent": true
+    },
+    {
+      "source": "/levels/:level",
+      "destination": "https://snhu-tools.vercel.app/transfers/levels/:level",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "destination": "https://snhu-tools.vercel.app/transfers",
+      "permanent": true
+    }
+  ]
 }
